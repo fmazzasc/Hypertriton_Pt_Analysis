@@ -1,0 +1,16 @@
+# ignore everything
+*
+
+# but these files
+!.gitignore
+!*.cpp
+!*.cxx
+!*.h
+!*.json
+!*.sh
+!*.py
+!*.yaml
+!*.md
+
+# even if they are inside subdirectories
+!*/

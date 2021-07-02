@@ -1,0 +1,44 @@
+ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/AnalysisResults_18.root"
+DATA_PATH: "/data/fmazzasc/PbPb_2body/DataTable_18_cols.root"
+MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/SignalTable_20g7.root"
+LS_BACKGROUND_PATH: "/data/fmazzasc/PbPb_2body/DataTable_18LS_cols.root"
+
+CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
+PT_BINS_CENT: [[[2, 3],[3,4],[4,5],[5,7], [7,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,4],[4,9]]]
+PT_BINS: [[2, 3],[3,4],[4,5],[5,7], [7,9]]
+CENTRALITY_LIST:  [[0, 10], [30, 50], [40, 90]]
+
+RANDOM_STATE: 42
+
+HYPERPARAMS:
+  max_depth: 13
+  learning_rate: 0.0982
+  n_estimators: 181
+  gamma: 0.4467
+  min_child_weight: 5.75
+  subsample: 0.74
+  colsample_bytree: 0.57
+  seed: 42
+
+HYPERPARAMS_RANGES:
+  # booster parameters
+  max_depth: !!python/tuple [5, 20] # defines the maximum depth of a single tree (regularization)
+  learning_rate: !!python/tuple [0.01, 0.3] # learning rate
+  n_estimators: !!python/tuple [50, 500] # number of boosting trees
+  gamma: !!python/tuple [0.3, 1.1] # specifies the minimum loss reduction required to make a split
+  min_child_weight: !!python/tuple [1, 12]
+  subsample: !!python/tuple [0.5, 0.9] # denotes the fraction of observations to be randomly samples for each tree
+  colsample_bytree: !!python/tuple [0.5, 0.9] # denotes the fraction of columns to be randomly samples for each tree
+
+TRAINING_COLUMNS:
+  - V0CosPA
+  - ct
+  - ProngsDCA
+  - PiProngPvDCAXY #pi da vertice primario
+  - He3ProngPvDCAXY
+  - He3ProngPvDCA # totale
+  - PiProngPvDCA
+  - NpidClustersHe3
+  - TPCnSigmaHe3
+  - TPCnSigmaPi
+  - NitsClustersHe3
