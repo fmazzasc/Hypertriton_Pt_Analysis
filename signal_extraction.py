@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys
+sys.path.append('utils')
+
 import os
 import pickle
 import warnings
@@ -50,7 +53,7 @@ bkg_shape = 'pol1'
 if BKG_EXPO:
     bkg_shape = 'expo'
 
-score_eff_arrays_dict = pickle.load(open("file_score_eff_dict", "rb"))
+score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
 eff_array = np.arange(0.10, MAX_EFF, 0.01)
 
 for split in SPLIT_LIST:
@@ -62,7 +65,7 @@ for split in SPLIT_LIST:
             df_signal = pd.read_parquet(f'df/mc_{bin}')
 
             # ROOT.Math.MinimizerOptions.SetDefaultTolerance(1e-2)
-            root_file_signal_extraction = ROOT.TFile("SignalExtraction.root", "update")
+            root_file_signal_extraction = ROOT.TFile("results/SignalExtraction.root", "update")
             root_file_signal_extraction.mkdir(f'{bin}_{bkg_shape}')
 
             # raw yileds histogram

@@ -57,7 +57,7 @@ parser.add_argument('-application', action='store_true')
 args = parser.parse_args()
 
 SPLIT = args.split
-MAX_EFF = 1.00
+MAX_EFF = 0.9
 DUMP_HYPERPARAMS = False
 
 # training
@@ -110,7 +110,6 @@ if TRAIN:
 
     score_eff_arrays_dict = dict()
 
-
     signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
     background_tree_handler =  TreeHandler(BKG_PATH, "DataTable")
 
@@ -120,8 +119,6 @@ if TRAIN:
         signal_tree_handler.shuffle_data_frame(size=int(1e4))
         background_tree_handler.shuffle_data_frame(size=int(1e4))
 
-
-
     # make plot directory
     if not os.path.isdir(PLOT_DIR):
         os.mkdir(PLOT_DIR)
@@ -129,6 +126,11 @@ if TRAIN:
     # make dataframe directory
     if not os.path.isdir('df'):
         os.mkdir('df')
+
+    if not os.path.isdir(f'results'):
+        os.mkdir(f'results')
+
+    root_file_presel_eff = ROOT.TFile("results/PreselEff.root", "recreate")
 
     for split in SPLIT_LIST:
 
@@ -152,9 +154,14 @@ if TRAIN:
                     f'matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]}')
                 del df_generated
 
+                # print(PT_BINS_CENT[i_cent_bins])
+                pt_bins_cent = np.sort(pd.unique([item for sublist in PT_BINS_CENT[i_cent_bins] for item in sublist])) #flattening list
+                ct_bins_cent = np.sort(pd.unique([item for sublist in CT_BINS for item in sublist])) #flattening list
+                print(pt_bins_cent)
+
                 # fill histograms (vs. ct and vs. pt)
-                hist_eff_ct = presel_eff_hist([df_signal_cent, df_generated_cent], 'ct', split, cent_bins, CT_BINS[i_cent_bins])
-                hist_eff_pt = presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, PT_BINS_CENT[i_cent_bins])
+                hist_eff_ct = presel_eff_hist([df_signal_cent, df_generated_cent], 'ct', split, cent_bins, ct_bins_cent)
+                hist_eff_pt = presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
 
                 # plot histograms
                 if not os.path.isdir(f'{PLOT_DIR}/presel_eff'):
@@ -168,14 +175,15 @@ if TRAIN:
                 hist_eff_pt.Draw("histo")
                 c1.Print(f'{PLOT_DIR}/presel_eff/hPreselEffVsPt_{split}_{cent_bins[0]}_{cent_bins[1]}.png')
 
-                root_file_presel_eff = ROOT.TFile("PreselEff.root", "update")
                 hist_eff_ct.Write()
                 hist_eff_pt.Write()
-                root_file_presel_eff.Close()
 
                 del df_signal_cent
                 del df_generated_cent
                 ##############################################################
+
+
+    root_file_presel_eff.Close()
 
     # second condition needed because of issue with Qt libraries
     if MAKE_FEATURES_PLOTS and not MAKE_PRESELECTION_EFFICIENCY and not TRAIN:
@@ -323,13 +331,13 @@ if TRAIN:
                 del train_test_data_cent
                 ##############################################################
 
-    pickle.dump(score_eff_arrays_dict, open("file_score_eff_dict", "wb"))
+    pickle.dump(score_eff_arrays_dict, open("results/file_score_eff_dict", "wb"))
 
 # apply model to data
 if APPLICATION:
     if not os.path.isdir('df'):
         os.mkdir('df')
-    score_eff_arrays_dict = pickle.load(open("file_score_eff_dict", "rb"))
+    score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
 
     for split in SPLIT_LIST:
         df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")

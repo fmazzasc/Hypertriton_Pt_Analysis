@@ -43,7 +43,7 @@ def significance_error(signal, background):
 def expo(x):
     return np.exp(-x / (252 * 0.029979245800)) #hyp tau taken from lifetime analysis
 
-def expected_signal(cent_class, ct_range, eff, n_events):
+def expected_signal_ct(cent_class, ct_range, pt_range, eff, n_events):
     he3_yield_list = [2.35e-4, 2.03e-4, 6.58e-5]
     correction = 0.4  # he3/hyp ratio (Very optimistic, considering it constant with centrality)
     correction *= 0.25 # 2-body Branching ratio
@@ -57,3 +57,27 @@ def expected_signal(cent_class, ct_range, eff, n_events):
     # expected signal for 0-90% centrality
     he3_yield_0_90 = 2.74e4
     return correction*he3_yield_0_90
+
+
+def expected_signal_pt(cent_range, pt_range, eff, nevents):
+    # print(nevents)
+
+    bw_file = ROOT.TFile('utils/BlastWaveFits.root', 'read')
+    bw = [bw_file.Get('BlastWave/BlastWave{}'.format(i)) for i in [0, 1, 2]]
+    bw_file.Close()
+
+    correction = 0.4  # Very optimistic, considering it constant with centrality
+    correction *= 0.25 #B.R. correction
+    cent_bins = [10, 40, 90]
+    signal = 0
+
+    for cent in range(cent_range[0]+1, cent_range[1]):
+        for index in range(0, 3):
+            if cent < cent_bins[index]:
+                signal = signal + \
+                    nevents[cent] * \
+                    bw[index].Integral(pt_range[0], pt_range[1], 1e-8)
+                # print(signal)
+                break
+    print(eff)
+    return int(signal * eff * correction)
