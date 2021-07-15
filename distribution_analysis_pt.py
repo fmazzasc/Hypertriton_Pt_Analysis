@@ -14,7 +14,7 @@ from ROOT import (TF1, TH1D, TH2D, TAxis, TCanvas, TColor, TFile, TFrame, TIter,
                   TPaveText, gDirectory, gROOT, gStyle, gPad, AliPWGFunc, kBlack, kBlue, kRed)
 from statsmodels.robust.scale import huber
 
-gROOT.LoadMacro("../Utils/YieldMean.C")
+gROOT.LoadMacro("utils/YieldMean.C")
 
 from ROOT import yieldmean
 random.seed(1989)
@@ -25,7 +25,7 @@ parser.add_argument("config", help="Path to the YAML configuration file")
 args = parser.parse_args()
 
 gROOT.SetBatch()
-bw_file = TFile(os.environ['HYPERML_UTILS'] + '/BlastWaveFits.root')
+bw_file = TFile('utils/BlastWaveFits.root')
 
 
 bw = bw_file.Get('BlastWave/BlastWave0')
@@ -42,7 +42,7 @@ with open(os.path.expandvars(args.config), 'r') as stream:
     except yaml.YAMLError as exc:
         print(exc)
 
-resultsSysDir = os.environ['HYPERML_RESULTS_{}'.format(params['NBODY'])]
+resultsSysDir = "results/"
 
 var = 'p_{T}'
 unit = 'GeV/#it{c}'

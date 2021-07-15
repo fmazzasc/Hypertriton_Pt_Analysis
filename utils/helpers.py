@@ -81,3 +81,21 @@ def expected_signal_pt(cent_range, pt_range, eff, nevents):
                 break
     print(eff)
     return int(signal * eff * correction)
+
+
+
+
+def bw_fit(histo, bw):
+    params = bw.GetParameters()
+    params[0] = 2.991
+    pwg = ROOT.AliPWGFunc()
+    bw = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])
+    bw.SetParLimits(1, 0, 2)
+    bw.SetParLimits(2, 0, 1)
+    bw.SetParLimits(3, 0, 2)
+    histo.Fit(bw, "QMI+")
+    par_after = bw.GetParameters()
+    integral = bw.Integral(0,20)
+    print(integral)
+    return histo, integral
+    

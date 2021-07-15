@@ -17,7 +17,7 @@ import yaml
 from helpers import significance_error, expected_signal_pt
 
 SPLIT = True
-MAX_EFF = 1.00
+MAX_EFF = 0.9
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -167,7 +167,7 @@ for split in SPLIT_LIST:
             significance_array = np.asarray(significance_list)
             significance_err_array = np.asarray(significance_err_list)
 
-
+            print(len(significance_array))
             significance_array = np.nan_to_num(significance_array*(eff_array_reduced))
             significance_err_array = np.nan_to_num(significance_err_array*(eff_array_reduced))
 
@@ -231,4 +231,4 @@ for split in SPLIT_LIST:
             eff_cut_dict[bin_range] = i_eff
             print(f'BDT efficiency cut variation range: +/-{i_eff-1}%')
 
-pickle.dump(eff_cut_dict, open("file_eff_cut_dict", "wb"))
+pickle.dump(eff_cut_dict, open("results/file_eff_cut_dict", "wb"))

@@ -24,9 +24,12 @@ ROOT.gROOT.SetBatch()
 
 parser = argparse.ArgumentParser(prog='signal_extraction', allow_abbrev=True)
 parser.add_argument('-bkgExpo', action='store_true')
+parser.add_argument('-bkgPol2', action='store_true')
+
 args = parser.parse_args()
 
 BKG_EXPO = args.bkgExpo
+BKG_POL2 =  args.bkgPol2
 
 ##################################################################
 # read configuration file
@@ -52,10 +55,14 @@ if SPLIT:
 bkg_shape = 'pol1'
 if BKG_EXPO:
     bkg_shape = 'expo'
+if BKG_POL2:
+    bkg_shape = 'pol2'
+
 
 score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
 eff_array = np.arange(0.10, MAX_EFF, 0.01)
 
+root_file_signal_extraction = ROOT.TFile("results/SignalExtraction.root", "recreate")
 for split in SPLIT_LIST:
     for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         cent_bins = CENTRALITY_LIST[i_cent_bins]
@@ -65,7 +72,6 @@ for split in SPLIT_LIST:
             df_signal = pd.read_parquet(f'df/mc_{bin}')
 
             # ROOT.Math.MinimizerOptions.SetDefaultTolerance(1e-2)
-            root_file_signal_extraction = ROOT.TFile("results/SignalExtraction.root", "update")
             root_file_signal_extraction.mkdir(f'{bin}_{bkg_shape}')
 
             # raw yileds histogram
@@ -103,10 +109,17 @@ for split in SPLIT_LIST:
                 # background
                 roo_n_background = ROOT.RooRealVar('N_{bkg}', 'Nbackground', 0., 1.e4)
                 roo_slope = ROOT.RooRealVar('slope', 'slope', -20., 20.)
+                roo_slope2 = ROOT.RooRealVar('slope2', 'slope2', -20., 20.)
+
+
                 roo_bkg = ROOT.RooRealVar()
 
-                if not BKG_EXPO:
+                if bkg_shape=="pol1":
                     roo_bkg = ROOT.RooPolynomial('background', 'background', roo_m, ROOT.RooArgList(roo_slope))
+                
+                elif bkg_shape=="pol2":
+                    roo_bkg = ROOT.RooPolynomial('background', 'background', roo_m, ROOT.RooArgList(roo_slope, roo_slope2))
+
                 else:
                     roo_bkg = ROOT.RooExponential('background', 'background', roo_m, roo_slope)
 
@@ -182,7 +195,7 @@ for split in SPLIT_LIST:
                         h_significance.SetBinContent(eff_index, significance_val)
                         h_significance.SetBinError(eff_index, significance_err)
 
-                        if significance_val > 2.95:
+                        if significance_val > 2:
                             # fill raw yields histogram
                             h_raw_yields.SetBinContent(eff_index, roo_n_signal.getVal())
                             h_raw_yields.SetBinError(eff_index, roo_n_signal.getError())
@@ -247,4 +260,4 @@ for split in SPLIT_LIST:
             h_significance.GetYaxis().SetTitle("S / #sqrt{S + B}")
             h_significance.Write()
 
-            root_file_signal_extraction.Close()
+root_file_signal_extraction.Close()
