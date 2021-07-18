@@ -16,7 +16,7 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 1.00
+MAX_EFF = 0.9
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -50,7 +50,7 @@ RANDOM_STATE = params['RANDOM_STATE']
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
-    SPLIT_LIST = ['antimatter', 'matter']
+    SPLIT_LIST = ['antimatter', 'matter', "all"]
 
 bkg_shape = 'pol1'
 if BKG_EXPO:
@@ -68,9 +68,22 @@ for split in SPLIT_LIST:
         cent_bins = CENTRALITY_LIST[i_cent_bins]
         for pt_bins in pt_bins_cent:
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-            df_data = pd.read_parquet(f'df/{bin}')
-            df_signal = pd.read_parquet(f'df/mc_{bin}')
-
+    
+            if split=="all":
+                bin_mat = f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                bin_antimat = f'antimatter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                df_data_mat = pd.read_parquet(f'df/{bin_mat}')
+                df_data_antimat = pd.read_parquet(f'df/{bin_antimat}')
+                df_signal_mat = pd.read_parquet(f'df/mc_{bin_mat}')
+                df_signal_antimat = pd.read_parquet(f'df/mc_{bin_antimat}')
+                df_data = pd.concat([df_data_mat, df_data_antimat])
+                df_signal = pd.concat([df_signal_mat, df_signal_antimat])
+                del df_data_antimat,df_data_mat,df_signal_antimat,df_signal_mat
+                score_eff_arrays_dict[bin] = score_eff_arrays_dict[bin_mat]
+            
+            else:
+                df_data = pd.read_parquet(f'df/{bin}')
+                df_signal = pd.read_parquet(f'df/mc_{bin}')
             # ROOT.Math.MinimizerOptions.SetDefaultTolerance(1e-2)
             root_file_signal_extraction.mkdir(f'{bin}_{bkg_shape}')
 
