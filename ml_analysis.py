@@ -356,7 +356,7 @@ if APPLICATION:
                 bin_model = f'{pt_bins[0]}_{pt_bins[1]}'
 
                 df_data_cent = df_data.query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
+                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35 and abs(Rapidity)<0.5')
 
                 model_hdl = ModelHandler()
 

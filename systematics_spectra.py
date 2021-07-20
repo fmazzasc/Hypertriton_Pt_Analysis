@@ -33,7 +33,7 @@ MAX_EFF = 0.9
 ##################################################################
 
 # split matter/antimatter
-N_TRIALS = 100
+N_TRIALS = 1000
 SPLIT=True
 SPLIT_LIST = ['']
 if SPLIT:
@@ -59,6 +59,7 @@ print("Total number of events: ", np.sum(cent_counts))
 
 eff_cut_dict = pickle.load(open("results/file_eff_cut_dict", "rb"))
 presel_eff_file = uproot.open('results/PreselEff.root')
+absorption_correction_file = uproot.open("results/He3_abs.root")
 signal_extraction_file = ROOT.TFile.Open('results/SignalExtraction.root')
 signal_extraction_up = uproot.open('results/SignalExtraction.root')
 
@@ -88,6 +89,12 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         presel_eff_counts = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].values
         presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].edges
         presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
+
+
+        func = "BlastWave" if cent_bins[0]<1 else "BGBW"
+        absorption_counts = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].values
+        absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].edges
+        absorption_bin_centers = (absorption_edges[1:]+absorption_edges[:-1])/2
 
         hist_bins = [5e-6, 3e-5] if cent_bins[0]==0 else [1e-6, 1.2e-5]
         trial = ROOT.TH1D(f'fParameterDistribution_{cent_bins[0]}_{cent_bins[1]}_{split}', f'{cent_bins[0]}-{cent_bins[1]}%_{split}', 60, hist_bins[0], hist_bins[1])
@@ -134,17 +141,19 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
                 raw_yield = h_raw_yield.GetBinContent(eff_index)
                 raw_yield_error = h_raw_yield.GetBinError(eff_index)
 
+                presel_eff_map = np.logical_and(presel_eff_bin_centers > pt_bins[0], presel_eff_bin_centers < pt_bins[1])
+                absorption_map = np.logical_and(absorption_bin_centers > pt_bins[0], absorption_bin_centers < pt_bins[1])
 
-                presel_eff_map = np.logical_and(
-                    presel_eff_bin_centers > pt_bins[0],
-                    presel_eff_bin_centers < pt_bins[1])
                 presel_eff = presel_eff_counts[presel_eff_map]
+                absorption_corr = absorption_counts[absorption_map]
+
+
                 bdt_eff = float(formatted_eff_cut)
                 eff = presel_eff * eff_cut_dict[bin]
 
                 pt_bin_index = h_corrected_yields[i_split].FindBin(pt_bins[0]+0.5)
-                h_corrected_yields[i_split].SetBinContent(pt_bin_index, raw_yield/eff[0])
-                h_corrected_yields[i_split].SetBinError(pt_bin_index, raw_yield_error/eff[0])
+                h_corrected_yields[i_split].SetBinContent(pt_bin_index, raw_yield/eff[0]/absorption_corr)
+                h_corrected_yields[i_split].SetBinError(pt_bin_index, raw_yield_error/eff[0]/absorption_corr)
 
         
 
@@ -165,7 +174,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             h_corrected_yields[i_split].SetMarkerStyle(20)
             h_corrected_yields[i_split].SetMarkerSize(0.8)
 
-            _, integral = hp.bw_fit(h_corrected_yields[i_split], bw)
+            _, integral,integral_error = hp.bw_fit(h_corrected_yields[i_split], bw)
 
             trial.Fill(integral)
 

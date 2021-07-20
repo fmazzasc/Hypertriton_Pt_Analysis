@@ -93,9 +93,15 @@ def bw_fit(histo, bw):
     bw.SetParLimits(1, 0, 2)
     bw.SetParLimits(2, 0, 1)
     bw.SetParLimits(3, 0, 2)
-    histo.Fit(bw, "QMI+")
+    fit_result = histo.Fit(bw, "SMI+")
+    cov_matrix = fit_result.GetCovarianceMatrix()
     par_after = bw.GetParameters()
     integral = bw.Integral(0,20)
-    print(integral)
-    return histo, integral
+    print(cov_matrix)
+    integral_error = bw.IntegralError(0,20, fit_result.GetParams(), cov_matrix.GetMatrixArray())
+
+
+
+    print("yield: ", integral, ", error: ", integral_error)
+    return histo, integral,integral_error
     

@@ -125,7 +125,7 @@ print(len(func.keys()))
 
 for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
 
-    # if counter > 100:
+    # if counter > 10000:
     #     break
     if np.floor(counter/num_entries*100) < 99:
         if counter > print_steps[print_step_index]:
@@ -183,19 +183,19 @@ for key in h_rec_ct.keys():
     outfile.cd(f"{key_cent[0]}_{key_cent[1]}")
 
     ############### eff radius
-    eff_radius = ROOT.TGraphAsymmErrors(h_rec_radius[key], h_gen_radius[key])
-    eff_radius.GetXaxis().SetTitle("#it{R}_{#it{abs}} (cm)")
-    eff_radius.GetYaxis().SetTitle("1 - #it{f}_{abs}")
-    eff_radius.Write(f"fEffRadius_" + key)  
+    h_rec_radius[key].Divide(h_gen_radius[key])
+    h_rec_radius[key].GetXaxis().SetTitle("#it{R}_{#it{abs}} (cm)")
+    h_rec_radius[key].GetYaxis().SetTitle("1 - #it{f}_{abs}")
+    h_rec_radius[key].Write(f"fEffRadius_" + key)  
     ############### eff ct
-    eff_ct = ROOT.TGraphAsymmErrors(h_rec_ct[key], h_gen_ct[key])
-    eff_ct.GetXaxis().SetTitle("#it{c}t (cm)")
-    eff_ct.GetYaxis().SetTitle("1 - #it{f}_{abs}")
-    eff_ct.Write(f"fEffCt_" + key)
+    h_rec_ct[key].Divide(h_gen_ct[key])
+    h_rec_ct[key].GetXaxis().SetTitle("#it{c}t (cm)")
+    h_rec_ct[key].GetYaxis().SetTitle("1 - #it{f}_{abs}")
+    h_rec_ct[key].Write(f"fEffCt_" + key)
     ############### eff pT
-    eff_pt = ROOT.TGraphAsymmErrors(h_rec_pt[key], h_gen_pt[key])
-    eff_pt.GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
-    eff_pt.GetYaxis().SetTitle("1 - #it{f}_{abs}")
-    eff_pt.Write(f"fEffPt_" + key)
+    h_rec_pt[key].Divide(h_gen_pt[key])
+    h_rec_pt[key].GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
+    h_rec_pt[key].GetYaxis().SetTitle("1 - #it{f}_{abs}")
+    h_rec_pt[key].Write(f"fEffPt_" + key)
 
 outfile.Close()
