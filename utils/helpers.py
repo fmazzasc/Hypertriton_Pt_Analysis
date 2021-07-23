@@ -87,20 +87,21 @@ def expected_signal_pt(cent_range, pt_range, eff, nevents):
 
 def bw_fit(histo, bw):
     params = bw.GetParameters()
-    params[0] = 2.991
+    # params[0] = 2.991
     pwg = ROOT.AliPWGFunc()
     bw = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])
+    bw.SetParLimits(0, 2.989, 2.992)
     bw.SetParLimits(1, 0, 2)
-    bw.SetParLimits(2, 0, 1)
+    bw.SetParLimits(2, 0, 2)
     bw.SetParLimits(3, 0, 2)
+    bw.SetParLimits(4, 0, 1)
+
     fit_result = histo.Fit(bw, "SMI+")
     cov_matrix = fit_result.GetCovarianceMatrix()
     par_after = bw.GetParameters()
     integral = bw.Integral(0,20)
-    print(cov_matrix)
+    print(cov_matrix[1][1])
     integral_error = bw.IntegralError(0,20, fit_result.GetParams(), cov_matrix.GetMatrixArray())
-
-
 
     print("yield: ", integral, ", error: ", integral_error)
     return histo, integral,integral_error

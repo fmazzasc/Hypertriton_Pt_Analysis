@@ -44,9 +44,18 @@ SPLIT_LIST = ['all']
 if SPLIT:
     SPLIT_LIST = ['antimatter', 'matter']
 
-score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
+
+
+RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+res_dir = 'results' + RESULTS_SUBDIR
+if not os.path.isdir(res_dir):
+    os.mkdir(res_dir)
+
+
+
+score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
 eff_array = np.arange(0.10, MAX_EFF, 0.01)
-presel_eff_file = uproot.open('results/PreselEff.root')
+presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
 analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
 
 # get centrality selected histogram
@@ -231,4 +240,4 @@ for split in SPLIT_LIST:
             eff_cut_dict[bin_range] = i_eff
             print(f'BDT efficiency cut variation range: +/-{i_eff-1}%')
 
-pickle.dump(eff_cut_dict, open("results/file_eff_cut_dict", "wb"))
+pickle.dump(eff_cut_dict, open(res_dir + "/file_eff_cut_dict", "wb"))

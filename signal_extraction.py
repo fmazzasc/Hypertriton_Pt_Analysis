@@ -46,7 +46,8 @@ PT_BINS_CENT = params['PT_BINS_CENT']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
 RANDOM_STATE = params['RANDOM_STATE']
 ##################################################################
-
+RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+res_dir = 'results' + RESULTS_SUBDIR
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
@@ -59,10 +60,10 @@ if BKG_POL2:
     bkg_shape = 'pol2'
 
 
-score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
+score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
 eff_array = np.arange(0.10, MAX_EFF, 0.01)
 
-root_file_signal_extraction = ROOT.TFile("results/SignalExtraction.root", "recreate")
+root_file_signal_extraction = ROOT.TFile(res_dir + "/SignalExtraction.root", "recreate")
 for split in SPLIT_LIST:
     for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         cent_bins = CENTRALITY_LIST[i_cent_bins]
@@ -151,7 +152,7 @@ for split in SPLIT_LIST:
                 if r.status() == 0 and delta_mass.getError() > 1.e-6:
 
                     # plot
-                    nBins = 26
+                    nBins =  40 if cent_bins[0] < 30 else 26
                     xframe = roo_m.frame(2.96, 3.025, nBins)
                     xframe.SetTitle(
                         str(pt_bins[0]) + '#leq #it{c}t<' + str(pt_bins[1]) + ' cm, ' + str(cent_bins[0]) + '-' +

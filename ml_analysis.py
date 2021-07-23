@@ -98,6 +98,13 @@ TRAINING_COLUMNS_LIST = params['TRAINING_COLUMNS']
 RANDOM_STATE = params['RANDOM_STATE']
 HYPERPARAMS = params['HYPERPARAMS']
 HYPERPARAMS_RANGES = params['HYPERPARAMS_RANGES']
+
+RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+
+res_dir = 'results' + RESULTS_SUBDIR
+if not os.path.isdir(res_dir):
+    os.mkdir(res_dir)
+
 ##################################################################
 test_mode = False
 
@@ -127,10 +134,7 @@ if TRAIN:
     if not os.path.isdir('df'):
         os.mkdir('df')
 
-    if not os.path.isdir(f'results'):
-        os.mkdir(f'results')
-
-    root_file_presel_eff = ROOT.TFile("results/PreselEff.root", "recreate")
+    root_file_presel_eff = ROOT.TFile(res_dir + "/PreselEff.root", "recreate")
 
     for split in SPLIT_LIST:
 
@@ -331,13 +335,13 @@ if TRAIN:
                 del train_test_data_cent
                 ##############################################################
 
-    pickle.dump(score_eff_arrays_dict, open("results/file_score_eff_dict", "wb"))
+    pickle.dump(score_eff_arrays_dict, open(res_dir + "/file_score_eff_dict", "wb"))
 
 # apply model to data
 if APPLICATION:
     if not os.path.isdir('df'):
         os.mkdir('df')
-    score_eff_arrays_dict = pickle.load(open("results/file_score_eff_dict", "rb"))
+    score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
 
     for split in SPLIT_LIST:
         df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
@@ -356,7 +360,7 @@ if APPLICATION:
                 bin_model = f'{pt_bins[0]}_{pt_bins[1]}'
 
                 df_data_cent = df_data.query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35 and abs(Rapidity)<0.5')
+                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
                 model_hdl = ModelHandler()
 

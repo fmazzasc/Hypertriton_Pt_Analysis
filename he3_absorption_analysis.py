@@ -121,7 +121,6 @@ print_step_index = 0
 num_entries = len(np_he3["pt"])
 print_steps = num_entries*np.arange(0,1,0.01)
 
-print(len(func.keys()))
 
 for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
 
