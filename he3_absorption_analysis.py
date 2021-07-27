@@ -22,6 +22,7 @@ with open(os.path.expandvars(config), 'r') as stream:
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENT_BINS_ANALYSIS = params['CENTRALITY_LIST']
 
+
 ##################################################################
 # define helper function
 

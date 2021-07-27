@@ -31,9 +31,14 @@ CENTRALITY_LIST = params['CENTRALITY_LIST']
 RANDOM_STATE = params['RANDOM_STATE']
 MAX_EFF = 0.9
 ##################################################################
+RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+res_dir = 'results' + RESULTS_SUBDIR
+if not os.path.isdir(res_dir):
+    os.mkdir(res_dir)
+
 
 # split matter/antimatter
-N_TRIALS = 1000
+N_TRIALS = 500
 SPLIT=True
 SPLIT_LIST = ['']
 if SPLIT:
@@ -57,14 +62,12 @@ cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
 
 print("Total number of events: ", np.sum(cent_counts))
 
-eff_cut_dict = pickle.load(open("results/file_eff_cut_dict", "rb"))
-presel_eff_file = uproot.open('results/PreselEff.root')
+eff_cut_dict = pickle.load(open(res_dir + "/file_eff_cut_dict", "rb"))
+presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
 absorption_correction_file = uproot.open("results/He3_abs.root")
-signal_extraction_file = ROOT.TFile.Open('results/SignalExtraction.root')
-signal_extraction_up = uproot.open('results/SignalExtraction.root')
-
-# abs_correction_file = ROOT.TFile.Open('results/He3_abs.root')
-pt_spectra_file = ROOT.TFile.Open('results/systematics.root', 'recreate')
+signal_extraction_file = ROOT.TFile.Open(res_dir + '/SignalExtraction.root')
+signal_extraction_up = uproot.open(res_dir + '/SignalExtraction.root')
+pt_spectra_file = ROOT.TFile.Open(res_dir + '/systematics.root', 'recreate')
 
 
 for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
@@ -72,6 +75,9 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
     flat_pt_bins = [item for sublist in pt_bins_cent for item in sublist]
     bins = np.unique(np.array(flat_pt_bins, dtype=float))
     cent_bins = CENTRALITY_LIST[i_cent_bins]
+
+    if cent_bins[0]>40:
+        continue
 
     cent_range_map = np.logical_and(cent_bin_centers > cent_bins[0], cent_bin_centers < cent_bins[1])
     counts_cent_range = cent_counts[cent_range_map]
@@ -96,7 +102,12 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].edges
         absorption_bin_centers = (absorption_edges[1:]+absorption_edges[:-1])/2
 
-        hist_bins = [5e-6, 3e-5] if cent_bins[0]==0 else [1e-6, 1.2e-5]
+        if cent_bins[0]==0:
+            hist_bins = [5e-6, 2.4e-5]
+        elif cent_bins[0]==10:
+            hist_bins = [6e-6, 1.2e-5]
+        else:
+            hist_bins = [1e-6, 6e-6]
         trial = ROOT.TH1D(f'fParameterDistribution_{cent_bins[0]}_{cent_bins[1]}_{split}', f'{cent_bins[0]}-{cent_bins[1]}%_{split}', 60, hist_bins[0], hist_bins[1])
         i_trial=0
         h_corrected_yields[i_split] = ROOT.TH1D(f'fYields_{split}_{cent_bins[0]}_{cent_bins[1]}', f'{split}, {cent_bins[0]}-{cent_bins[1]}%', len(bins)-1, bins)
@@ -177,6 +188,9 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             _, integral,integral_error = hp.bw_fit(h_corrected_yields[i_split], bw)
 
             trial.Fill(integral)
+
+        trial.GetXaxis().SetTitle("d#it{N}/dy")
+        trial.GetYaxis().SetTitle("Counts")
 
         trial.Write()
 

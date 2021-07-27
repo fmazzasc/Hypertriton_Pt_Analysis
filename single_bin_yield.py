@@ -14,6 +14,8 @@ import ROOT
 import uproot
 import yaml
 
+HYP_HE_CROSS_SECT_SCALING = 96/98
+
 config = 'config.yaml'
 with open(os.path.expandvars(config), 'r') as stream:
     try:
@@ -56,8 +58,6 @@ cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_su
 ######################### compute the preselection efficiency #######################
 df_gen = uproot.open(os.path.expandvars(MC_PATH))['GenTable'].pandas.df()
 df_rec = uproot.open(os.path.expandvars(MC_PATH))['SignalTable'].pandas.df()
-
-print(df_gen.query("centrality<10"))
 
 
 cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
@@ -135,7 +135,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
 
             bdt_eff = float(formatted_eff_cut)
             eff = float(presel_eff * eff_cut_dict[bin])
-            absorption_corr = np.mean(absorption_corr)
+            absorption_corr = np.mean(absorption_corr)*HYP_HE_CROSS_SECT_SCALING
 
 
             pt_bin_index = h_corrected_yields[i_split].FindBin(pt_bins[0]+0.5)

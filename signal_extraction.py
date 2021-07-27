@@ -155,7 +155,7 @@ for split in SPLIT_LIST:
                     nBins =  40 if cent_bins[0] < 30 else 26
                     xframe = roo_m.frame(2.96, 3.025, nBins)
                     xframe.SetTitle(
-                        str(pt_bins[0]) + '#leq #it{c}t<' + str(pt_bins[1]) + ' cm, ' + str(cent_bins[0]) + '-' +
+                        str(pt_bins[0]) + '#leq #it{p}_{T}<' + str(pt_bins[1]) + ' GeV/#it{c}, ' + str(cent_bins[0]) + '-' +
                         str(cent_bins[1]) + '%, BDT efficiency = ' + str(formatted_eff))
                     xframe.SetName(f'fInvMass_{formatted_eff}')
                     roo_data.plotOn(xframe, ROOT.RooFit.Name('data'))
@@ -248,7 +248,7 @@ for split in SPLIT_LIST:
 
                             # plot kde and mc
                             frame = roo_m.frame(2.96, 3.025, 130)
-                            frame.SetTitle(str(cent_bins[0])+"-"+str(cent_bins[1])+"%, "+str(pt_bins[0])+"#leq #it{c}t<"+str(pt_bins[1])+" cm, BDT efficiency = "+str(formatted_eff))
+                            frame.SetTitle(str(cent_bins[0])+"-"+str(cent_bins[1])+"%, "+str(pt_bins[0])+'#leq #it{p}_{T}<'+str(pt_bins[1])+" GeV/#it{c}, BDT efficiency = "+str(formatted_eff))
                             roo_mc_signal.plotOn(frame)
                             roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
                             gaus.plotOn(frame, ROOT.RooFit.Name("gaussian"), ROOT.RooFit.LineColor(ROOT.kRed), ROOT.RooFit.LineStyle(ROOT.kDashed))

@@ -14,6 +14,9 @@ import ROOT
 import uproot
 import yaml
 
+HYP_HE_CROSS_SECT_SCALING = 96/98
+
+
 config = 'config.yaml'
 with open(os.path.expandvars(config), 'r') as stream:
     try:
@@ -124,7 +127,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
 
             presel_eff = presel_eff_counts[presel_eff_map]
             absorption_corr = absorption_counts[absorption_map]
-
+            absorption_corr = 0.96
             bdt_eff = float(formatted_eff_cut)
             eff = presel_eff * eff_cut_dict[bin]
 
@@ -147,8 +150,8 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
 
 
         # set labels
-        h_corrected_yields[i_split].GetXaxis().SetTitle("#it{p}_T (GeV/#it{c^2})")
-        h_corrected_yields[i_split].GetYaxis().SetTitle("d#it{N}/d(#it{p}_T) (GeV/#it{c^2})")
+        h_corrected_yields[i_split].GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
+        h_corrected_yields[i_split].GetYaxis().SetTitle("d#it{N}/d(y#it{p}_{T})")
 
         for i_bin in range(len(bins))[1:]:
             bin_width = h_corrected_yields[i_split].GetBinWidth(i_bin)

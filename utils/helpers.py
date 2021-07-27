@@ -90,16 +90,16 @@ def bw_fit(histo, bw):
     # params[0] = 2.991
     pwg = ROOT.AliPWGFunc()
     bw = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])
-    bw.SetParLimits(0, 2.989, 2.992)
+    bw.SetParLimits(0, 2.990, 2.992)
     bw.SetParLimits(1, 0, 2)
     bw.SetParLimits(2, 0, 2)
     bw.SetParLimits(3, 0, 2)
-    bw.SetParLimits(4, 0, 1)
+    bw.SetParLimits(4, 0, 1000)
 
-    fit_result = histo.Fit(bw, "SMI+")
+    fit_result = histo.Fit(bw, "QSMI+")
     cov_matrix = fit_result.GetCovarianceMatrix()
     par_after = bw.GetParameters()
-    integral = bw.Integral(0,20)
+    integral = bw.Integral(0,20, 1e7)
     print(cov_matrix[1][1])
     integral_error = bw.IntegralError(0,20, fit_result.GetParams(), cov_matrix.GetMatrixArray())
 
