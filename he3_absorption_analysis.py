@@ -21,6 +21,7 @@ with open(os.path.expandvars(config), 'r') as stream:
 
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENT_BINS_ANALYSIS = params['CENTRALITY_LIST']
+RESULTS_SUBDIR = params['RESULTS_SUBDIR']
 
 
 ##################################################################
@@ -47,7 +48,7 @@ split_list = ['antimatter', 'matter']
 
 # mc input file
 mc_file = '/data/fmazzasc/PbPb_2body/AnalysisResults_He3_abs.root'
-outfile = ROOT.TFile("results/He3_abs.root", "recreate")
+outfile = ROOT.TFile(f"results{RESULTS_SUBDIR}/He3_abs.root", "recreate")
 centfile = ROOT.TFile("/data/fmazzasc/PbPb_2body/AnalysisResults_18.root")
 
 # get event centrality distribution

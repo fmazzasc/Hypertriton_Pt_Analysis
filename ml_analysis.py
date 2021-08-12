@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys
+sys.path.append('utils')
+import helpers as hp
+
 import os
 import pickle
 import warnings
@@ -19,33 +23,6 @@ from sklearn.model_selection import train_test_split
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
-
-def presel_eff_hist(df_list, col_name, split, cent_bins, bins):
-    # fill histograms (vs. ct and vs. pt)
-    bins_array = np.asarray(bins, dtype=float)
-    hist_eff = ROOT.TH1F(
-        f'fPreselEff_vs_{col_name}_{split}_{cent_bins[0]}_{cent_bins[1]}',
-        f'Preselection Efficiency, {split}, {cent_bins[0]}-{cent_bins[1]}%', len(bins) - 1, bins_array)
-    hist_gen = ROOT.TH1F('fPreselGen_vs_{col_name}', 'Gen', len(bins)-1, bins_array)
-
-    for val in df_list[0][col_name]:
-        hist_eff.Fill(val)
-    for val in df_list[1][col_name]:
-        hist_gen.Fill(val)
-
-    # compute efficiency and set properties
-    hist_eff.Divide(hist_eff, hist_gen, 1, 1, "B")
-    if col_name == 'ct':
-        hist_eff.GetXaxis().SetTitle('#it{c}t (cm)')
-    elif col_name == 'pt':
-        hist_eff.GetXaxis().SetTitle('#it{p}_{T} (GeV/#it{c})')
-    hist_eff.GetYaxis().SetTitle('Efficiency')
-    hist_eff.SetMinimum(0)
-    hist_eff.SetDrawOption("histo")
-    hist_eff.SetLineWidth(2)
-
-    # return histogram
-    return hist_eff
 
 
 parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
@@ -71,6 +48,7 @@ OPTIMIZED = False
 TRAIN = args.train
 COMPUTE_SCORES_FROM_EFF = args.computescoreff
 # application
+
 APPLICATION = args.application
 
 # avoid pandas warning
@@ -88,6 +66,9 @@ with open(os.path.expandvars(config), 'r') as stream:
         print(exc)
 
 DATA_PATH = params['DATA_PATH']
+MERGE_SAMPLES = params['MERGE_SAMPLES']
+KINT7 = params['KINT7']
+
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
 CT_BINS = params['CT_BINS']
@@ -164,8 +145,8 @@ if TRAIN:
                 print(pt_bins_cent)
 
                 # fill histograms (vs. ct and vs. pt)
-                hist_eff_ct = presel_eff_hist([df_signal_cent, df_generated_cent], 'ct', split, cent_bins, ct_bins_cent)
-                hist_eff_pt = presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
+                hist_eff_ct = hp.presel_eff_hist([df_signal_cent, df_generated_cent], 'ct', split, cent_bins, ct_bins_cent)
+                hist_eff_pt = hp.presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
 
                 # plot histograms
                 if not os.path.isdir(f'{PLOT_DIR}/presel_eff'):
@@ -191,11 +172,7 @@ if TRAIN:
 
     # second condition needed because of issue with Qt libraries
     if MAKE_FEATURES_PLOTS and not MAKE_PRESELECTION_EFFICIENCY and not TRAIN:
-        ######################################################
-        # PLOT FEATURES DISTRIBUTIONS AND CORRELATIONS
-        ######################################################
 
-        # define tree handlers
 
         if len(background_tree_handler)>5*len(signal_tree_handler):
             background_tree_handler.shuffle_data_frame(size=5*len(signal_tree_handler))
@@ -345,6 +322,12 @@ if APPLICATION:
 
     for split in SPLIT_LIST:
         df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
+        if KINT7:
+            df_data = df_data.query('trigger==9 or trigger ==1 or trigger==9+2 or trigger==1+2 or trigger==9+4 or trigger==1+4')
+        if MERGE_SAMPLES:
+            df_2015 = uproot.open(os.path.expandvars('/data/fmazzasc//PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
+            df_data = pd.concat([df_data, df_2015])
+        
 
         split_ineq_sign = '> -0.1'
         if SPLIT:
@@ -360,7 +343,7 @@ if APPLICATION:
                 bin_model = f'{pt_bins[0]}_{pt_bins[1]}'
 
                 df_data_cent = df_data.query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
+                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality <= {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
                 model_hdl = ModelHandler()
 

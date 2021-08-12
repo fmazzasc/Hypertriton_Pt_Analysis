@@ -32,18 +32,20 @@ piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
 cent_classes = [[0,10], [10,30], [30,50]]
+n_ev = [11e6, 11e6*2, 11e6*2]
+
 mass_range = [2.96,3.04]
 n_bins = 40
 
 
-mc_file = uproot.open("/data/fmazzasc/PbPb_2body/SignalTable_20g7.root")
+mc_file = uproot.open("/data/fmazzasc/PbPb_2body/SignalTable_16h7abc.root")
 df = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
 rec_df = mc_file["SignalTable"].arrays(library="pd")
 gen_df = mc_file["GenTable"].arrays(library="pd")
 
 ffile = ROOT.TFile("std_analysis.root", "recreate")
 
-for cent in cent_classes:
+for ind, cent in enumerate(cent_classes):
     ffile.mkdir(f'{cent[0]}_{cent[1]}')
     ffile.cd()
     for cosPA in cosPAcuts:
@@ -57,16 +59,13 @@ for cent in cent_classes:
                         cut = cut + f" and {cent[0]}<centrality<{cent[1]}"
                         print("#################################")
                         print("CUT: ", cut)
-                        print("EFFICIENCY: ", len(rec_df.query(cut + "and abs(Rapidity)<0.5"))/len(gen_df.query("abs(rapidity)<0.5" + f" and {cent[0]}<centrality<{cent[1]} and matter==1")))
+                        eff = len(rec_df.query(cut + "and abs(Rapidity)<0.5 and Matter==1"))/len(gen_df.query("abs(rapidity)<0.5" + f" and {cent[0]}<centrality<{cent[1]} and matter==1"))
+                        print("EFFICIENCY: ", eff)
                         df_sel = df.query(cut)
                         selected_data_hist = np.histogram(np.array(df_sel['m']), bins=n_bins, range=mass_range)                        
                         selected_data_hist = hp.h1_invmass(selected_data_hist[0], mass_range=mass_range, bins=n_bins, name=f'{cut}')
                         fit_result = hp.fit_hist(selected_data_hist, cent_class =cent, pt_range = [2,9], ct_range = [2,35])
+                        print('yield: ', fit_result[0]/n_ev[ind]/eff)
 
 
 ffile.Close()
-
-
-
-
-print("EFF2:",   len(rec_df.query("0<centrality<10 and pt>2 and abs(Rapidity)<0.5 "))/len(gen_df.query("0<centrality<10 and abs(rapidity)<0.5")) )

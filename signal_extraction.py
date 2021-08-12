@@ -95,7 +95,7 @@ for split in SPLIT_LIST:
             h_significance = ROOT.TH1D("fSignificance", "fSignificance", 101, -0.005, 1.005)
 
             for eff_score in zip(eff_array, score_eff_arrays_dict[bin]):
-                if eff_score[0] < 0.50:
+                if eff_score[0] < 0.30:
                     continue
                 formatted_eff = "{:.2f}".format(eff_score[0])
                 print(f'processing {bin}: eff = {eff_score[0]:.2f}, score = {eff_score[1]:.2f}...')
