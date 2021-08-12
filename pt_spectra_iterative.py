@@ -67,7 +67,7 @@ presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
 signal_extraction_file = ROOT.TFile.Open(res_dir + '/SignalExtraction.root')
 signal_extraction_up = uproot.open(res_dir + '/SignalExtraction.root')
 absorption_correction_file = uproot.open(f"results{RESULTS_SUBDIR}/He3_abs.root")
-pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root', 'recreate')
+pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra_iter.root', 'recreate')
 
 
 for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):

@@ -28,12 +28,12 @@ def presel_eff_hist(df_list, col_name, split, cent_bins, bins):
     return hist_eff
 
 
-df_rec = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_flat_pt.root")["SignalTable"].arrays(library="pd")
-df_gen = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_flat_pt.root")["GenTable"].arrays(library="pd")
+df_rec = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_flat_pt.root")["SignalTable"].arrays(library="pd").query("abs(Rapidity)<0.5 and pt>2")
+df_gen = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_flat_pt.root")["GenTable"].arrays(library="pd").query("abs(rapidity)<0.5")
 
 cent_bins = [0,10]
-pt_bins = [0,9]
-pt_fine_bins = np.linspace(0,9,1000)
+pt_bins = [2,3,4,5,6,7,8,9]
+pt_fine_bins = np.linspace(2,9,1000)
 
 hist_eff_pt = presel_eff_hist([df_rec, df_gen], 'pt', "matter", cent_bins, pt_bins)
 for ibin in range(1,hist_eff_pt.GetNbinsX() + 1):
@@ -42,16 +42,28 @@ for ibin in range(1,hist_eff_pt.GetNbinsX() + 1):
 fromroot = aghast.from_root(hist_eff_pt)
 np_hist = aghast.to_numpy(fromroot)
 
-hist_eff_pt_fine = presel_eff_hist([df_rec, df_gen], 'pt', "fine_matter", cent_bins, pt_fine_bins)
+hist_eff_pt_fine = presel_eff_hist([df_rec, df_gen], 'pt', "fine_eff_reweighting", cent_bins, pt_fine_bins)
 
 bw_file = ROOT.TFile("BlastWaveFits.root")
 hypPtShape = bw_file.Get("BlastWave/BlastWave0")
 
 hp.reweight_efficiency(hist_eff_pt, hist_eff_pt_fine, hypPtShape)
+print(hist_eff_pt.GetBinContent(ibin))
+
+
+df_rec = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_bw_0_10.root")["SignalTable"].arrays(library="pd").query("abs(Rapidity)<0.5 and pt>2")
+df_gen = uproot.open("/data/fmazzasc/PbPb_2body/MC_tables/SignalTable_bw_0_10.root")["GenTable"].arrays(library="pd").query("abs(rapidity)<0.5")
+hist_eff_pt_distr = presel_eff_hist([df_rec, df_gen], 'pt', "distr_reweighting", cent_bins, pt_bins)
+
+cv = ROOT.TCanvas('hist_comp')
+hist_eff_pt.Draw()
+hist_eff_pt_distr.Draw('same')
+
 
 
 ffile = ROOT.TFile("prova.root", "recreate")
 hist_eff_pt.Write()
 hist_eff_pt_fine.Write()
 hypPtShape.Write()
+cv.Write()
 ffile.Close()
