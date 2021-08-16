@@ -16,7 +16,7 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 0.9
+MAX_EFF = 0.85
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -25,11 +25,13 @@ ROOT.gROOT.SetBatch()
 parser = argparse.ArgumentParser(prog='signal_extraction', allow_abbrev=True)
 parser.add_argument('-bkgExpo', action='store_true')
 parser.add_argument('-bkgPol2', action='store_true')
+parser.add_argument('-gaus_signal', action='store_true')
 
 args = parser.parse_args()
 
 BKG_EXPO = args.bkgExpo
 BKG_POL2 =  args.bkgPol2
+gaus_signal = args.gaus_signal
 
 ##################################################################
 # read configuration file
@@ -116,9 +118,15 @@ for split in SPLIT_LIST:
                 roo_n_signal = ROOT.RooRealVar('N_{signal}', 'Nsignal', 0., 1.e3)
                 delta_mass = ROOT.RooRealVar("#Deltam", 'deltaM', -0.004, 0.004, 'GeV/c^{2}')
                 shifted_mass = ROOT.RooAddition("mPrime", "m + #Deltam", ROOT.RooArgList(roo_m, delta_mass))
-                roo_signal = ROOT.RooKeysPdf("signal", "signal", shifted_mass, roo_m,
-                                             roo_mc_signal, ROOT.RooKeysPdf.NoMirror, 2)
-                roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
+
+                if gaus_signal:
+                    roo_mean = ROOT.RooRealVar("mean", "mean", 2.98, 3.0)
+                    roo_sigma = ROOT.RooRealVar("sigma", "sigma", 0.0005, 0.0040)
+                    roo_signal = ROOT.RooGaussian("signal", "signal", roo_m, roo_mean, roo_sigma)
+                
+                else:
+                    roo_signal = ROOT.RooKeysPdf("signal", "signal", shifted_mass, roo_m,roo_mc_signal, ROOT.RooKeysPdf.NoMirror, 2)
+                # roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
 
                 # background
                 roo_n_background = ROOT.RooRealVar('N_{bkg}', 'Nbackground', 0., 1.e4)
@@ -149,7 +157,7 @@ for split in SPLIT_LIST:
                 r = roo_model.fitTo(roo_data, ROOT.RooFit.Save(), ROOT.RooFit.Extended(ROOT.kTRUE))
 
                 print(f'fit status: {r.status()}')
-                if r.status() == 0 and delta_mass.getError() > 1.e-6:
+                if (r.status() == 0 and delta_mass.getError() > 1.e-6) or gaus_signal:
 
                     # plot
                     nBins =  40 if cent_bins[0] < 30 else 26
@@ -179,8 +187,8 @@ for split in SPLIT_LIST:
                     if float(formatted_chi2) < 2 and r.edm() < 1:
 
                         # fit mc distribution to get sigma and mass
-                        roo_mean_mc = ROOT.RooRealVar("mean", "mean", 2.98, 3.0)
-                        roo_sigma_mc = ROOT.RooRealVar("sigma", "sigma", 0.0005, 0.0040)
+                        roo_mean_mc = ROOT.RooRealVar("mean_mc", "mean_mc", 2.98, 3.0)
+                        roo_sigma_mc = ROOT.RooRealVar("sigma_mc", "sigma_mc", 0.0005, 0.0040)
                         gaus = ROOT.RooGaussian('gaus', 'gaus', roo_m, roo_mean_mc, roo_sigma_mc)
                         gaus.fitTo(roo_mc_signal)
 
@@ -209,7 +217,7 @@ for split in SPLIT_LIST:
                         h_significance.SetBinContent(eff_index, significance_val)
                         h_significance.SetBinError(eff_index, significance_err)
 
-                        if significance_val > 2:
+                        if significance_val > 2.8:
                             # fill raw yields histogram
                             h_raw_yields.SetBinContent(eff_index, roo_n_signal.getVal())
                             h_raw_yields.SetBinError(eff_index, roo_n_signal.getError())
@@ -250,7 +258,7 @@ for split in SPLIT_LIST:
                             frame = roo_m.frame(2.96, 3.025, 130)
                             frame.SetTitle(str(cent_bins[0])+"-"+str(cent_bins[1])+"%, "+str(pt_bins[0])+'#leq #it{p}_{T}<'+str(pt_bins[1])+" GeV/#it{c}, BDT efficiency = "+str(formatted_eff))
                             roo_mc_signal.plotOn(frame)
-                            roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
+                            # roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
                             gaus.plotOn(frame, ROOT.RooFit.Name("gaussian"), ROOT.RooFit.LineColor(ROOT.kRed), ROOT.RooFit.LineStyle(ROOT.kDashed))
                             cc = ROOT.TCanvas("cc", "cc")
                             if not os.path.isdir('plots/kde_signal'):

@@ -209,7 +209,8 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         if not pt_spectra_file.GetListOfKeys().Contains('results'):
             pt_spectra_file.mkdir('results')
         pt_spectra_file.cd('results')
-        histo.Write()        
+        histo.Write()
+        pt_shape.Write()
 
 pt_spectra_file.Close()
 

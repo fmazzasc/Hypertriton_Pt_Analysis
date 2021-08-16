@@ -120,7 +120,7 @@ def bw_fit(histo, bw):
     bw.SetParLimits(3, 0, 2)
     bw.SetParLimits(4, 0, 1000)
 
-    fit_result = histo.Fit(bw, "QSMI+", "", 2,9)
+    fit_result = histo.Fit(bw, "QSMI+", "", 0,100)
     cov_matrix = fit_result.GetCovarianceMatrix()
     integral = bw.Integral(0,20, 1e6)
     integral_error = bw.IntegralError(0,20, fit_result.GetParams(), cov_matrix.GetMatrixArray())

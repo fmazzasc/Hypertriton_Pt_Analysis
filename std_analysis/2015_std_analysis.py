@@ -54,18 +54,19 @@ for ind, cent in enumerate(cent_classes):
                 for piPt in piPtCuts:
                     for pDCA in prongsDCA:
                         
-                        cut = ('abs(Rapidity)<0.5 and Matter==1 and 2<ct<35 and V0CosPA > {} and NpidClustersHe3 > {} and He3ProngPt > {} and pt > 2 and pt < 9 and PiProngPt > {} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 3.5 and ProngsDCA < {}'.format(
+                        cut = ('Matter==1 and 2<ct<35 and V0CosPA > {} and NpidClustersHe3 > {} and He3ProngPt > {} and pt > 2 and pt < 9 and PiProngPt > {} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 3.5 and ProngsDCA < {}'.format(
                                 cosPA, pidHe3, he3Pt, piPt, pDCA))
                         cut = cut + f" and {cent[0]}<centrality<{cent[1]}"
                         print("#################################")
                         print("CUT: ", cut)
-                        eff = len(rec_df.query(cut + "and abs(Rapidity)<0.5 and Matter==1"))/len(gen_df.query("abs(rapidity)<0.5" + f" and {cent[0]}<centrality<{cent[1]} and matter==1"))
+                        eff = len(rec_df.query(cut + "and abs(Rapidity)<0.5"))/len(gen_df.query("abs(rapidity)<0.5" + f" and {cent[0]}<centrality<{cent[1]} and matter==1"))
                         print("EFFICIENCY: ", eff)
                         df_sel = df.query(cut)
                         selected_data_hist = np.histogram(np.array(df_sel['m']), bins=n_bins, range=mass_range)                        
                         selected_data_hist = hp.h1_invmass(selected_data_hist[0], mass_range=mass_range, bins=n_bins, name=f'{cut}')
                         fit_result = hp.fit_hist(selected_data_hist, cent_class =cent, pt_range = [2,9], ct_range = [2,35])
-                        print('yield: ', fit_result[0]/n_ev[ind]/eff)
+                        print(fit_result)
+                        print('yield: ', fit_result[0]/eff/n_ev[ind])
 
 
 ffile.Close()

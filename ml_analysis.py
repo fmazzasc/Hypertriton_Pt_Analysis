@@ -101,8 +101,8 @@ if TRAIN:
     signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
     background_tree_handler =  TreeHandler(BKG_PATH, "DataTable")
 
-    signal_tree_handler.apply_preselections("ct<35 and 2<pt<9")
-    background_tree_handler.apply_preselections("ct<35 and 2<pt<9")
+    signal_tree_handler.apply_preselections("ct<35 and 1<pt<9")
+    background_tree_handler.apply_preselections("ct<35 and 1<pt<9")
     if test_mode:
         signal_tree_handler.shuffle_data_frame(size=int(1e4))
         background_tree_handler.shuffle_data_frame(size=int(1e4))
@@ -134,7 +134,7 @@ if TRAIN:
                 ##############################################################
                 df_generated = uproot.open(os.path.expandvars(MC_PATH))['GenTable'].arrays(library="pd")
                 df_signal_cent = signal_tree_handler.get_data_frame().query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and pt > 2 and pt < 9 and 0<ct<35 and -0.5<Rapidity<0.5')
+                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and 0<ct<35 and -0.5<Rapidity<0.5')
                 df_generated_cent = df_generated.query(
                     f'matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and -0.5<rapidity<0.5')
                 del df_generated
