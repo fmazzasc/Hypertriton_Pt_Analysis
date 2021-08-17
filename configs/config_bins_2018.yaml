@@ -18,13 +18,13 @@ KINT7: False
 
 RANDOM_STATE: 42
 HYPERPARAMS:
-  # max_depth: 13
-  # learning_rate: 0.0982
-  # n_estimators: 181
-  # gamma: 0.4467
-  # min_child_weight: 5.75
-  # subsample: 0.74
-  # colsample_bytree: 0.57
+  max_depth: 13
+  learning_rate: 0.0982
+  n_estimators: 181
+  gamma: 0.4467
+  min_child_weight: 5.75
+  subsample: 0.74
+  colsample_bytree: 0.57
   seed: 42
 
 HYPERPARAMS_RANGES:

@@ -1,10 +1,11 @@
+from home.fmazzasc.Hypertriton.Hypertriton_Pt_Analysis.ml_analysis import MERGE_SAMPLES
 import sys
 sys.path.append('utils')
 import helpers as hp
 
 import os
 import pickle
-import warnings
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,12 +17,17 @@ import yaml
 
 HYP_HE_CROSS_SECT_SCALING = 96/98
 
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+
+parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:
         print(exc)
+##################################
 
 ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
 PT_BINS_CENT = params['PT_BINS_CENT']
@@ -52,6 +58,8 @@ bw = bw_file.Get('BlastWave/BlastWave0')
 analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
 # cent_counts, cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()  ##does not wprk with uproot3 
 cent_counts = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].values ##does not wprk with uproot4
+if MERGE_SAMPLES:
+    cent_counts += uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_2015.root')["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].values
 cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].edges ##does not wprk with uproot4
 
 

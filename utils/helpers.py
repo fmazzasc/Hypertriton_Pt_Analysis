@@ -20,8 +20,13 @@ def generate_th1(counts, bins, name=''):
 
 def presel_eff_hist(df_list, col_name, split, cent_bins, bins):
 
-    counts_rec = np.histogram(df_list[0]["pt"], bins=bins)
-    counts_gen = np.histogram(df_list[1]["pt"], bins=bins)
+    counts_rec = np.histogram(df_list[0][col_name], bins=bins)
+    counts_gen = np.histogram(df_list[1][col_name], bins=bins)
+    print('------------------------------------')
+    print(bins)
+    print(counts_rec, counts_gen)
+    print('------------------------------------')
+
     eff = counts_rec[0]/counts_gen[0]
     hist_eff = generate_th1(eff, bins, f"fPreselEff_vs_{col_name}_{split}_{cent_bins[0]}_{cent_bins[1]}")
     hist_eff.GetXaxis().SetTitle('#it{p}_{T} (GeV/#it{c})')

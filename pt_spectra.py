@@ -9,7 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+import argparse
 import ROOT
 import uproot
 import yaml
@@ -17,12 +17,16 @@ import yaml
 HYP_HE_CROSS_SECT_SCALING = 96/98
 
 
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+parser = argparse.ArgumentParser(prog='pt_spectra', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:
         print(exc)
+
 
 ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
 PT_BINS_CENT = params['PT_BINS_CENT']

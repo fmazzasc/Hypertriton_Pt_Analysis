@@ -31,7 +31,15 @@ parser.add_argument('-eff', action='store_true')
 parser.add_argument('-train', action='store_true')
 parser.add_argument('-computescoreff', action='store_true')
 parser.add_argument('-application', action='store_true')
+parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
+    try:
+        params = yaml.full_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
+##################################
 
 SPLIT = args.split
 MAX_EFF = 0.9
@@ -58,12 +66,6 @@ ROOT.gROOT.SetBatch()
 ##################################################################
 # read configuration file
 ##################################################################
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
-    try:
-        params = yaml.full_load(stream)
-    except yaml.YAMLError as exc:
-        print(exc)
 
 DATA_PATH = params['DATA_PATH']
 MERGE_SAMPLES = params['MERGE_SAMPLES']
@@ -325,7 +327,7 @@ if APPLICATION:
         if KINT7:
             df_data = df_data.query('trigger==9 or trigger ==1 or trigger==9+2 or trigger==1+2 or trigger==9+4 or trigger==1+4')
         if MERGE_SAMPLES:
-            df_2015 = uproot.open(os.path.expandvars('/data/fmazzasc//PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
+            df_2015 = uproot.open(os.path.expandvars('/data/fmazzasc/PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
             df_data = pd.concat([df_data, df_2015])
         
 

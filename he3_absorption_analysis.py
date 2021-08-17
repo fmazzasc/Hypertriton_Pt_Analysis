@@ -6,14 +6,18 @@ import warnings
 import numpy as np
 import ROOT
 import yaml
+import argparse
 
 HE_3_MASS = 2.809230089
 
 ##################################################################
 # read configuration file
 ##################################################################
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:

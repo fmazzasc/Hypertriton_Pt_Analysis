@@ -4,6 +4,7 @@ sys.path.append('utils')
 import os
 import pickle
 import warnings
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,8 +27,11 @@ ROOT.gROOT.SetBatch()
 ##################################################################
 # read configuration file
 ##################################################################
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+parser = argparse.ArgumentParser(prog='significance_scan', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:

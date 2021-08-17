@@ -16,7 +16,7 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 0.85
+MAX_EFF = 0.8
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(prog='signal_extraction', allow_abbrev=True)
 parser.add_argument('-bkgExpo', action='store_true')
 parser.add_argument('-bkgPol2', action='store_true')
 parser.add_argument('-gaus_signal', action='store_true')
-
+parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
 BKG_EXPO = args.bkgExpo
@@ -36,8 +36,9 @@ gaus_signal = args.gaus_signal
 ##################################################################
 # read configuration file
 ##################################################################
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:
@@ -97,7 +98,7 @@ for split in SPLIT_LIST:
             h_significance = ROOT.TH1D("fSignificance", "fSignificance", 101, -0.005, 1.005)
 
             for eff_score in zip(eff_array, score_eff_arrays_dict[bin]):
-                if eff_score[0] < 0.30:
+                if eff_score[0] < 0.20:
                     continue
                 formatted_eff = "{:.2f}".format(eff_score[0])
                 print(f'processing {bin}: eff = {eff_score[0]:.2f}, score = {eff_score[1]:.2f}...')

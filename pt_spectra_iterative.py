@@ -1,7 +1,7 @@
 import sys
 sys.path.append('utils')
 import helpers as hp
-import aghast
+import argparse
 import os
 import pickle
 import warnings
@@ -17,13 +17,15 @@ import yaml
 
 HYP_HE_CROSS_SECT_SCALING = 96/98
 
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+parser = argparse.ArgumentParser(prog='pt_spectra_iterative', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:
         print(exc)
-
 ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
