@@ -69,7 +69,6 @@ ROOT.gROOT.SetBatch()
 
 DATA_PATH = params['DATA_PATH']
 MERGE_SAMPLES = params['MERGE_SAMPLES']
-KINT7 = params['KINT7']
 
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
@@ -324,8 +323,7 @@ if APPLICATION:
 
     for split in SPLIT_LIST:
         df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
-        if KINT7:
-            df_data = df_data.query('trigger==9 or trigger ==1 or trigger==9+2 or trigger==1+2 or trigger==9+4 or trigger==1+4')
+ 
         if MERGE_SAMPLES:
             df_2015 = uproot.open(os.path.expandvars('/data/fmazzasc/PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
             df_data = pd.concat([df_data, df_2015])
@@ -346,6 +344,10 @@ if APPLICATION:
 
                 df_data_cent = df_data.query(
                     f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality <= {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
+
+                if cent_bins[0]==10 or cent_bins[0]==50:
+                    print('selecting kINT7..')
+                    df_data_cent = df_data_cent.query('trigger%2!=0 and trigger!=0') ###select kint7 in [10,30] and [50,90]
 
                 model_hdl = ModelHandler()
 

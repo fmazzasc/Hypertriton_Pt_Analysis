@@ -30,6 +30,7 @@ ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
 RANDOM_STATE = params['RANDOM_STATE']
+MERGE_SAMPLES = params['MERGE_SAMPLES']
 ##################################################################
 
 RESULTS_SUBDIR = params['RESULTS_SUBDIR']
@@ -52,6 +53,8 @@ bw = bw_file.Get('BlastWave/BlastWave0')
 #####################################################################
 analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
 cent_counts = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].values ##does not wprk with uproot4
+if MERGE_SAMPLES:
+    cent_counts += uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_2015.root')["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].values
 cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].edges ##does not wprk with uproot4
 #####################################################################
 

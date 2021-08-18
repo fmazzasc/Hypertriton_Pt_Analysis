@@ -12,7 +12,7 @@ os.system(f"python3 ml_analysis.py {args.config} -split -eff -train -computescor
 os.system(f"python3 ml_analysis.py {args.config} -split  -application")
 os.system(f"python3 signal_extraction.py {args.config}")
 os.system(f"python3 significance_scan.py {args.config}")
-os.system(f"python3 he3_absorption_analysis.py {args.config}")
+# os.system(f"python3 he3_absorption_analysis.py {args.config}")
 
 
 

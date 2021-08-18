@@ -1,8 +1,8 @@
 ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/AnalysisResults_2015.root"
-DATA_PATH: "/data/fmazzasc/PbPb_2body/DataTable_15o.root"
-MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root"
+DATA_PATH: "/data/fmazzasc/PbPb_2body/DataTable_15o_filter.root"
+MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/SignalTable_16h7abc.root"
 LS_BACKGROUND_PATH: "/data/fmazzasc/PbPb_2body/trees/new_trees/DataTable_18qr_pass3_LS.root"
-RESULTS_SUBDIR: "/2015_single_bin"
+RESULTS_SUBDIR: "/2015_single_bin_filter"
 
 
 CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
