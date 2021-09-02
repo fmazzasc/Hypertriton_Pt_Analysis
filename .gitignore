@@ -5,6 +5,8 @@
 !.gitignore
 !*.cpp
 !*.cxx
+!*.cc
+
 !*.h
 !*.json
 !*.sh

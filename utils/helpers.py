@@ -21,10 +21,12 @@ def generate_th1(counts, bins, name=''):
 def presel_eff_hist(df_list, col_name, split, cent_bins, bins):
 
     counts_rec = np.histogram(df_list[0][col_name], bins=bins)
-    counts_gen = np.histogram(df_list[1][col_name], bins=bins)
+    counts_gen = np.histogram(df_list[1]['gPt'], bins=bins)
     print('------------------------------------')
-    print(bins)
-    print(counts_rec, counts_gen)
+    print('bins: ', bins)
+    eff = counts_rec[0]/counts_gen[0]
+    print('eff: ', eff)
+
     print('------------------------------------')
 
     eff = counts_rec[0]/counts_gen[0]
@@ -114,23 +116,21 @@ def expected_signal_pt(cent_range, pt_range, eff, nevents):
 
 
 
-def bw_fit(histo, bw):
+def bw_fit(histo, bw, pwg):
     params = bw.GetParameters()
-    # params[0] = 2.991
-    pwg = ROOT.AliPWGFunc()
-    bw = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])
-    bw.FixParameter(0,2.991)
-    bw.SetParLimits(1, 0, 2)
-    bw.SetParLimits(2, 0, 2)
-    bw.SetParLimits(3, 0, 2)
-    bw.SetParLimits(4, 0, 1000)
+    bw_fit = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])   
+    bw_fit.SetParLimits(0, 2.989,2.992)
+    bw_fit.SetParLimits(1, 0, 2)
+    bw_fit.SetParLimits(2, 0, 2)
+    bw_fit.SetParLimits(3, 0, 2)
+    bw_fit.SetParLimits(4, 0, 1000)
 
-    fit_result = histo.Fit(bw, "QSMI+", "", 0,100)
+    fit_result = histo.Fit(bw_fit, "SMI+", "", 2,9)
     cov_matrix = fit_result.GetCovarianceMatrix()
-    integral = bw.Integral(0,20, 1e6)
-    integral_error = bw.IntegralError(0,20, fit_result.GetParams(), cov_matrix.GetMatrixArray())
+    integral = bw_fit.Integral(0,10, 1e5)
+    integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray())
 
-    return histo, integral, integral_error, bw
+    return histo, integral, integral_error, bw_fit
     
 
 
@@ -190,3 +190,14 @@ def reweight_efficiency(hEfficiencyAnalysisBins, hEfficiencySmallBins, fInputSpe
         hEfficiencyAnalysisBins.SetBinContent(ibin,average_eff)
         hEfficiencyAnalysisBins.SetBinError(ibin,error_eff)
 
+
+def apply_pt_rejection(df, pt_shape):
+    rej_flag = np.ones(len(df))
+    random_arr = np.random.rand(len(df))
+    max_bw = pt_shape.GetMaximum()
+
+    for ind, (pt, rand) in enumerate(zip(df['gPt'],random_arr)):
+        frac = pt_shape.Eval(pt)/max_bw
+        if rand > frac:
+            rej_flag[ind] = -1
+    df._full_data_frame['rej'] = rej_flag

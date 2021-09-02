@@ -54,7 +54,7 @@ res_dir = 'results' + RESULTS_SUBDIR
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
-    SPLIT_LIST = ['antimatter', 'matter', "all"]
+    SPLIT_LIST = ['antimatter', 'matter']
 
 bkg_shape = 'pol1'
 if BKG_EXPO:
@@ -105,9 +105,9 @@ for split in SPLIT_LIST:
 
                 df_data_sel = df_data.query(f'model_output > {eff_score[1]}')
                 df_signal_sel = df_signal.query(f'model_output > {eff_score[1]}')
-                if len(df_signal_sel) > 10000:
+                if len(df_signal_sel) > 1000:
                     print('Sampling 10000 events...')
-                    df_signal_sel = df_signal_sel.sample(10000)
+                    df_signal_sel = df_signal_sel.sample(1000)
 
                 # get invariant mass distribution (data and mc)
                 roo_m = ROOT.RooRealVar("m", "#it{M} (^{3}He + #pi^{-})", 2.960, 3.025, "GeV/#it{c}^{2}")
@@ -127,7 +127,7 @@ for split in SPLIT_LIST:
                 
                 else:
                     roo_signal = ROOT.RooKeysPdf("signal", "signal", shifted_mass, roo_m,roo_mc_signal, ROOT.RooKeysPdf.NoMirror, 2)
-                # roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
+                roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
 
                 # background
                 roo_n_background = ROOT.RooRealVar('N_{bkg}', 'Nbackground', 0., 1.e4)
@@ -218,7 +218,7 @@ for split in SPLIT_LIST:
                         h_significance.SetBinContent(eff_index, significance_val)
                         h_significance.SetBinError(eff_index, significance_err)
 
-                        if significance_val > 2.8:
+                        if significance_val > 0.5:
                             # fill raw yields histogram
                             h_raw_yields.SetBinContent(eff_index, roo_n_signal.getVal())
                             h_raw_yields.SetBinError(eff_index, roo_n_signal.getError())
@@ -247,8 +247,7 @@ for split in SPLIT_LIST:
                             text_signif.Draw("same")
                             text_sig.Draw("same")
                             text_bkg.Draw("same")
-                            print(
-                                f'significance = {"{:.3f}".format(significance_val)} +/- {"{:.3f}".format(significance_err)}')
+                            print(f'significance = {"{:.3f}".format(significance_val)} +/- {"{:.3f}".format(significance_err)}')
                             if not os.path.isdir('plots/signal_extraction'):
                                 os.mkdir('plots/signal_extraction')
                             if not os.path.isdir(f'plots/signal_extraction/{bin}_{bkg_shape}'):
@@ -259,7 +258,7 @@ for split in SPLIT_LIST:
                             frame = roo_m.frame(2.96, 3.025, 130)
                             frame.SetTitle(str(cent_bins[0])+"-"+str(cent_bins[1])+"%, "+str(pt_bins[0])+'#leq #it{p}_{T}<'+str(pt_bins[1])+" GeV/#it{c}, BDT efficiency = "+str(formatted_eff))
                             roo_mc_signal.plotOn(frame)
-                            # roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
+                            roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
                             gaus.plotOn(frame, ROOT.RooFit.Name("gaussian"), ROOT.RooFit.LineColor(ROOT.kRed), ROOT.RooFit.LineStyle(ROOT.kDashed))
                             cc = ROOT.TCanvas("cc", "cc")
                             if not os.path.isdir('plots/kde_signal'):

@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
+
 import sys
 sys.path.append('utils')
+
 import helpers as hp
-
-import os
-import pickle
-import warnings
-import argparse
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import ROOT
-import uproot
-import xgboost as xgb
-import yaml
-from hipe4ml import analysis_utils, plot_utils
-from hipe4ml.analysis_utils import train_test_generator
-from hipe4ml.model_handler import ModelHandler
-from hipe4ml.tree_handler import TreeHandler
 from sklearn.model_selection import train_test_split
+from hipe4ml.tree_handler import TreeHandler
+from hipe4ml.model_handler import ModelHandler
+from hipe4ml.analysis_utils import train_test_generator
+from hipe4ml import analysis_utils, plot_utils
+import yaml
+import xgboost as xgb
+import uproot
+import ROOT
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import argparse
+import warnings
+import pickle
+import os
+
+
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
-
 parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
 parser.add_argument('-split', action='store_true')
-parser.add_argument('-eff', action='store_true')
 parser.add_argument('-train', action='store_true')
-parser.add_argument('-computescoreff', action='store_true')
 parser.add_argument('-application', action='store_true')
+parser.add_argument('-n_iter', default=None)
 parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
@@ -43,21 +43,18 @@ with open(os.path.expandvars(args.config), 'r') as stream:
 
 SPLIT = args.split
 MAX_EFF = 0.9
-DUMP_HYPERPARAMS = False
 
 # training
-TRAINING = not args.application
 PLOT_DIR = 'plots'
-MAKE_PRESELECTION_EFFICIENCY = args.eff
-MAKE_FEATURES_PLOTS = False
-MAKE_TRAIN_TEST_PLOT = False
 OPTIMIZE = False
 OPTIMIZED = False
 TRAIN = args.train
-COMPUTE_SCORES_FROM_EFF = args.computescoreff
+N_ITER = int(args.n_iter)
+print(N_ITER)
 # application
 
 APPLICATION = args.application
+
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -69,7 +66,6 @@ ROOT.gROOT.SetBatch()
 
 DATA_PATH = params['DATA_PATH']
 MERGE_SAMPLES = params['MERGE_SAMPLES']
-
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
 CT_BINS = params['CT_BINS']
@@ -80,33 +76,37 @@ TRAINING_COLUMNS_LIST = params['TRAINING_COLUMNS']
 RANDOM_STATE = params['RANDOM_STATE']
 HYPERPARAMS = params['HYPERPARAMS']
 HYPERPARAMS_RANGES = params['HYPERPARAMS_RANGES']
-
 RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+
 
 res_dir = 'results' + RESULTS_SUBDIR
 if not os.path.isdir(res_dir):
     os.mkdir(res_dir)
 
+model_dir = 'models' + RESULTS_SUBDIR
 ##################################################################
-test_mode = False
-
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
     SPLIT_LIST = ['antimatter', 'matter']
 
+
+
+def create_dic_from_file(filename):
+    tf1_dic = {}
+    tf1_dic['0_10'] = filename.Get('results/func_0_10')
+    tf1_dic['10_30'] = filename.Get('results/func_10_30')
+    tf1_dic['30_50'] = filename.Get('results/func_30_50')
+    tf1_dic['50_90'] = filename.Get('results/func_50_90')
+    return tf1_dic
+
+
+
 if TRAIN:
 
     score_eff_arrays_dict = dict()
-
     signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
-    background_tree_handler =  TreeHandler(BKG_PATH, "DataTable")
-
-    signal_tree_handler.apply_preselections("ct<35 and 1<pt<9")
-    background_tree_handler.apply_preselections("ct<35 and 1<pt<9")
-    if test_mode:
-        signal_tree_handler.shuffle_data_frame(size=int(1e4))
-        background_tree_handler.shuffle_data_frame(size=int(1e4))
+    background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
 
     # make plot directory
     if not os.path.isdir(PLOT_DIR):
@@ -118,109 +118,67 @@ if TRAIN:
 
     root_file_presel_eff = ROOT.TFile(res_dir + "/PreselEff.root", "recreate")
 
-    for split in SPLIT_LIST:
+    for i_cent_bins in range(len(CENTRALITY_LIST)):
+        cent_bins = CENTRALITY_LIST[i_cent_bins]
+        print('##########################################################################')
+        print(f'CENTRALITY BIN: {cent_bins[0]}-{cent_bins[1]}\n')
+        print('****************** Reweighting MC and computing Efficiency ***************')
 
-        split_ineq_sign = '> -0.1'
-        if SPLIT:
-            split_ineq_sign = '> 0.5'
+        if N_ITER>0:
+            pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root')
+            TF1_DICT = create_dic_from_file(pt_spectra_file)
+            hp.apply_pt_rejection(signal_tree_handler, TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
+            pt_spectra_file.Close()
+        else:
+            rej_flag = np.ones(len(signal_tree_handler))
+            signal_tree_handler._full_data_frame['rej'] = rej_flag
+            print('Rejection not applied: TF1 dict not given')
+
+        root_file_presel_eff.cd()
+
+        for split in SPLIT_LIST:
+            split_ineq_sign = '> -0.1'
+            if SPLIT:
+                split_ineq_sign = '> 0.5'
             if split == 'antimatter':
                 split_ineq_sign = '< 0.5'
 
-        for i_cent_bins in range(len(CENTRALITY_LIST)):
-            cent_bins = CENTRALITY_LIST[i_cent_bins]
+            df_signal_cent = signal_tree_handler.apply_preselections(
+                f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
+            df_generated_cent = signal_tree_handler.apply_preselections(
+                f'gMatter {split_ineq_sign} and rej>0 and abs(gRapidity)<0.5', inplace=False)
+            print(len(df_signal_cent), len(df_generated_cent))
+            pt_bins_cent = np.sort(pd.unique(
+                [item for sublist in PT_BINS_CENT[i_cent_bins] for item in sublist]))  # flattening list
+            hist_eff_pt = hp.presel_eff_hist(
+                [df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
+            hist_eff_pt.Write()
+            del df_generated_cent, df_signal_cent
 
-            if MAKE_PRESELECTION_EFFICIENCY and not MAKE_FEATURES_PLOTS and not MAKE_TRAIN_TEST_PLOT:
-                ##############################################################
-                # PRESELECTION EFFICIENCY
-                ##############################################################
-                df_generated = uproot.open(os.path.expandvars(MC_PATH))['GenTable'].arrays(library="pd")
-                df_signal_cent = signal_tree_handler.get_data_frame().query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and 0<ct<35 and -0.5<Rapidity<0.5')
-                df_generated_cent = df_generated.query(
-                    f'matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]} and -0.5<rapidity<0.5')
-                del df_generated
+            print('****************** Start BDT trainings ***************')
+            pt_bins_cent = PT_BINS_CENT[i_cent_bins]
+            for pt_bins in pt_bins_cent:
+                print(
+                    f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0')
+                signal_tree_handler_pt = signal_tree_handler.apply_preselections(
+                    f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
+                background_tree_handler_pt = background_tree_handler.apply_preselections(
+                    f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and {cent_bins[0]}<centrality<{cent_bins[1]}', inplace=False)
 
-                # print(PT_BINS_CENT[i_cent_bins])
-                pt_bins_cent = np.sort(pd.unique([item for sublist in PT_BINS_CENT[i_cent_bins] for item in sublist])) #flattening list
-                ct_bins_cent = np.sort(pd.unique([item for sublist in CT_BINS for item in sublist])) #flattening list
-                print(pt_bins_cent)
+                print('Number of signal candidates: ',
+                      len(signal_tree_handler_pt))
+                print('Number of bkg candidates: ',
+                      len(background_tree_handler_pt))
 
-                # fill histograms (vs. ct and vs. pt)
-                hist_eff_ct = hp.presel_eff_hist([df_signal_cent, df_generated_cent], 'ct', split, cent_bins, ct_bins_cent)
-                hist_eff_pt = hp.presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
-
-                # plot histograms
-                if not os.path.isdir(f'{PLOT_DIR}/presel_eff'):
-                    os.mkdir(f'{PLOT_DIR}/presel_eff')
-                c1 = ROOT.TCanvas()
-                ROOT.gStyle.SetOptStat(0)
-                c1.cd()
-                c1.SetTicks(1,1)
-                hist_eff_ct.Draw("histo")
-                c1.Print(f'{PLOT_DIR}/presel_eff/hPreselEffVsCt_{split}_{cent_bins[0]}_{cent_bins[1]}.png')
-                hist_eff_pt.Draw("histo")
-                c1.Print(f'{PLOT_DIR}/presel_eff/hPreselEffVsPt_{split}_{cent_bins[0]}_{cent_bins[1]}.png')
-
-                hist_eff_ct.Write()
-                hist_eff_pt.Write()
-
-                del df_signal_cent
-                del df_generated_cent
-                ##############################################################
-
-
-    root_file_presel_eff.Close()
-
-    # second condition needed because of issue with Qt libraries
-    if MAKE_FEATURES_PLOTS and not MAKE_PRESELECTION_EFFICIENCY and not TRAIN:
-
-
-        if len(background_tree_handler)>5*len(signal_tree_handler):
-            background_tree_handler.shuffle_data_frame(size=5*len(signal_tree_handler))
-
-
-        if not os.path.isdir(f'{PLOT_DIR}/features'):
-            os.mkdir(f'{PLOT_DIR}/features')
-
-        leg_labels = ['background', 'signal']
-        plot_utils.plot_distr(
-            [background_tree_handler, signal_tree_handler],
-            TRAINING_COLUMNS_LIST, bins=40, labels=leg_labels, log=True, density=True, figsize=(12, 7),
-            alpha=0.3, grid=False)
-        plt.subplots_adjust(left=0.06, bottom=0.06, right=0.99, top=0.96, hspace=0.55, wspace=0.55)
-        plt.savefig(f'{PLOT_DIR}/features/FeaturePlots')
-        plot_utils.plot_corr([background_tree_handler], TRAINING_COLUMNS_LIST, ['background'])
-        plt.savefig(f'{PLOT_DIR}/features/BackgroundCorrelationMatrix')
-        plot_utils.plot_corr([signal_tree_handler], TRAINING_COLUMNS_LIST, ['signal'])
-        plt.savefig(f'{PLOT_DIR}/features/SignalCorrelationMatrix')
-        plt.close('all')
-
-        exit()
-        ###########################################################
-
-
-    for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
-        cent_bins = CENTRALITY_LIST[i_cent_bins]
-        for pt_bins in pt_bins_cent:
-            
-
-            signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]}', inplace=False)
-            background_tree_handler_pt = background_tree_handler.apply_preselections(f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]}', inplace=False)
-
-            if len(background_tree_handler_pt)>5*len(signal_tree_handler_pt):
-                background_tree_handler_pt.shuffle_data_frame(size=5*len(signal_tree_handler_pt))
-
-            train_test_data = train_test_generator([signal_tree_handler_pt, background_tree_handler_pt], [1, 0], test_size=0.5, random_state=RANDOM_STATE)
-
-            for split in SPLIT_LIST:
-                split_ineq_sign = '> -0.1'
-                if SPLIT:
-                    split_ineq_sign = '> 0.5'
-                    if split == 'antimatter':
-                        split_ineq_sign = '< 0.5'
-
+                if len(background_tree_handler_pt) > 5*len(signal_tree_handler_pt):
+                    background_tree_handler_pt.shuffle_data_frame(
+                        size=5*len(signal_tree_handler_pt))
+                
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-                bin_model = f'{pt_bins[0]}_{pt_bins[1]}'
+                print("BIN RESULTS: ", bin_results)
+
+                train_test_data = train_test_generator([signal_tree_handler_pt, background_tree_handler_pt], [
+                                                       1, 0], test_size=0.5, random_state=RANDOM_STATE)
 
                 ##############################################################
                 # TRAINING AND TEST SET PREPARATION
@@ -230,104 +188,69 @@ if TRAIN:
                 model_clf = xgb.XGBClassifier(use_label_encoder=False)
                 model_hdl = ModelHandler(model_clf, TRAINING_COLUMNS_LIST)
                 model_hdl.set_model_params(HYPERPARAMS)
-                model_hdl.set_model_params({"n_jobs":30})
+                model_hdl.set_model_params({"n_jobs": 30})
                 # hyperparameters optimization and model training
-                if not os.path.isdir('models'):
-                    os.mkdir('models')
+
+                if not os.path.isdir(model_dir):
+                    os.mkdir(model_dir)
+
                 if OPTIMIZE and TRAIN:
-                    model_hdl.optimize_params_bayes(train_test_data, HYPERPARAMS_RANGES,
-                                                    'roc_auc', nfold=5, init_points=10, n_iter=10, njobs=40)
-                isModelTrained = os.path.isfile(f'models/{bin_model}_trained')
-                print(f'isModelTrained {bin_model}: {isModelTrained}')
-                if TRAIN and not isModelTrained:
-                    print(
-                    f'Number of candidates ({split}) for training in {pt_bins[0]} <= pt < {pt_bins[1]} GeV/c: {len(train_test_data[0])}')
-                    print(
-                    f'signal candidates: {np.count_nonzero(train_test_data[1] == 1)}; background candidates: {np.count_nonzero(train_test_data[1] == 0)}; n_cand_bkg / n_cand_signal = {np.count_nonzero(train_test_data[1] == 0) / np.count_nonzero(train_test_data[1] == 1)}')
+                    model_hdl.optimize_params_bayes(
+                        train_test_data, HYPERPARAMS_RANGES, 'roc_auc', nfold=5, init_points=10, n_iter=10, njobs=40)
 
-                    model_hdl.train_test_model(train_test_data)
-                    model_file_name = str(f'models/{bin_model}_trained')
-                    if OPTIMIZE:
-                        model_file_name = str(f'models/{bin_model}_optimized_trained')
-                    model_hdl.dump_model_handler(model_file_name)
-                elif COMPUTE_SCORES_FROM_EFF:
-                    if OPTIMIZED:
-                        model_hdl.load_model_handler(f'models/{bin_model}_optimized_trained')
-                    else:
-                        model_hdl.load_model_handler(f'models/{bin_model}_trained')
-                else:
-                    continue
+                model_hdl.train_test_model(train_test_data)
+                model_file_name = str(f'{model_dir}/{bin_results}_trained')
+                if OPTIMIZE:
+                    model_file_name = str(
+                        f'{model_dir}/{bin_results}_optimized_trained')
+                model_hdl.dump_model_handler(model_file_name)
 
+                signal_tree_handler_cent = signal_tree_handler_pt.apply_preselections(
+                    f'Matter {split_ineq_sign}', inplace=False)
+                background_tree_handler_cent = background_tree_handler_pt.apply_preselections(
+                    f'Matter {split_ineq_sign}', inplace=False)
 
-                    # get only centrality selected
-                
-                print("BIN RESULTS: ", bin_results)
-                signal_tree_handler_cent = signal_tree_handler_pt.apply_preselections(f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]}', inplace=False)
-                background_tree_handler_cent = background_tree_handler_pt.apply_preselections(f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality < {cent_bins[1]}', inplace=False)
-
-                train_test_data_cent = train_test_generator([signal_tree_handler_cent, background_tree_handler_cent], [1, 0], test_size=0.5, random_state=RANDOM_STATE)
-
+                train_test_data_cent = train_test_generator([signal_tree_handler_cent, background_tree_handler_cent], [
+                                                            1, 0], test_size=0.5, random_state=RANDOM_STATE)
 
                 # get predictions for training and test sets
                 test_y_score = model_hdl.predict(train_test_data_cent[2])
                 train_y_score = model_hdl.predict(train_test_data_cent[0])
 
-                # second condition needed because of issue with Qt libraries
-                if MAKE_TRAIN_TEST_PLOT:
-                    if not os.path.isdir(f'{PLOT_DIR}/train_test_out'):
-                        os.mkdir(f'{PLOT_DIR}/train_test_out')
-                    plot_utils.plot_output_train_test(model_hdl, train_test_data_cent,
-                                                        logscale=True, density=True, labels=leg_labels)
-                    plt.savefig(f'{PLOT_DIR}/train_test_out/{bin_results}_out.png')
+                # get scores corresponding to BDT efficiencies using test set
+                eff_array = np.arange(0.10, MAX_EFF, 0.01)
+                score_array = analysis_utils.score_from_efficiency_array(
+                    train_test_data_cent[3], test_y_score, efficiency_selected=eff_array, keep_lower=False)
+                score_eff_arrays_dict[bin_results] = score_array
 
-                    # plot_utils.plot_feature_imp(train_test_data_cent[0], train_test_data_cent[1], model_hdl)
-                    # plt.savefig(f'{PLOT_DIR}/train_test_out/feature_imp_training_{bin_results}.png')
-                    plot_utils.plot_roc_train_test(
-                        train_test_data_cent[3],
-                        test_y_score, train_test_data_cent[1],
-                        train_y_score, labels=leg_labels)
-                    plt.savefig(f'{PLOT_DIR}/train_test_out/roc_train_test_{bin_results}.png')
-                    plt.close('all')
+                # write test set data frame
+                train_test_data_cent[2]['model_output'] = test_y_score
+                mc_data_cent = train_test_data_cent[2][train_test_data_cent[3] > 0.5]
+                mc_data_cent.to_parquet(
+                    f'df/mc_{bin_results}', compression='gzip')
 
-                if COMPUTE_SCORES_FROM_EFF:
-                    # get scores corresponding to BDT efficiencies using test set
-                    eff_array = np.arange(0.10, MAX_EFF, 0.01)
-                    score_array = analysis_utils.score_from_efficiency_array(
-                        train_test_data_cent[3], test_y_score, efficiency_selected=eff_array, keep_lower=False)
-                    score_eff_arrays_dict[bin_results] = score_array
-
-                    # write test set data frame
-                    train_test_data_cent[2]['model_output'] = test_y_score
-                    mc_data_cent = train_test_data_cent[2][train_test_data_cent[3]>0.5]
-                    mc_data_cent.to_parquet(f'df/mc_{bin_results}', compression='gzip')
-
-                    # get the model hyperparameters
-                    if DUMP_HYPERPARAMS:
-                        if not os.path.isdir('hyperparams'):
-                            os.mkdir('hyperparams')
-                        model_params_dict = model_hdl.get_model_params()
-                        with open(f'hyperparams/model_params_{bin_model}.yml', 'w') as outfile:
-                            yaml.dump(model_params_dict, outfile, default_flow_style=False)
-
-                    # save roc-auc
+                # save roc-auc
                 del train_test_data_cent
                 ##############################################################
 
-    pickle.dump(score_eff_arrays_dict, open(res_dir + "/file_score_eff_dict", "wb"))
+    pickle.dump(score_eff_arrays_dict, open(
+        res_dir + "/file_score_eff_dict", "wb"))
 
 # apply model to data
 if APPLICATION:
     if not os.path.isdir('df'):
         os.mkdir('df')
-    score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
+    score_eff_arrays_dict = pickle.load(
+        open(res_dir + "/file_score_eff_dict", "rb"))
 
     for split in SPLIT_LIST:
-        df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
- 
+        df_data = uproot.open(os.path.expandvars(DATA_PATH))[
+            'DataTable'].arrays(library="pd")
+
         if MERGE_SAMPLES:
-            df_2015 = uproot.open(os.path.expandvars('/data/fmazzasc/PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
+            df_2015 = uproot.open(os.path.expandvars(
+                '/data/fmazzasc/PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
             df_data = pd.concat([df_data, df_2015])
-        
 
         split_ineq_sign = '> -0.1'
         if SPLIT:
@@ -340,26 +263,31 @@ if APPLICATION:
                 cent_bins = CENTRALITY_LIST[i_cent_bins]
 
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-                bin_model = f'{pt_bins[0]}_{pt_bins[1]}'
 
                 df_data_cent = df_data.query(
                     f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality <= {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
-                if cent_bins[0]==10 or cent_bins[0]==50:
+                if cent_bins[0] == 10 or cent_bins[0] == 50:
                     print('selecting kINT7..')
-                    df_data_cent = df_data_cent.query('trigger%2!=0 and trigger!=0') ###select kint7 in [10,30] and [50,90]
+                    # select kint7 in [10,30] and [50,90]
+                    df_data_cent = df_data_cent.query(
+                        'trigger%2!=0 and trigger!=0')
 
                 model_hdl = ModelHandler()
 
                 if OPTIMIZED:
-                    model_hdl.load_model_handler(f'models/{bin_model}_optimized_trained')
+                    model_hdl.load_model_handler(
+                        f'{model_dir}/{bin_results}_optimized_trained')
                 else:
-                    model_hdl.load_model_handler(f'models/{bin_model}_trained')
+                    model_hdl.load_model_handler(
+                        f'{model_dir}/{bin_results}_trained')
 
                 eff_array = np.arange(0.10, MAX_EFF, 0.01)
                 print(bin_results)
                 data_y_score = model_hdl.predict(df_data_cent)
                 df_data_cent['model_output'] = data_y_score
 
-                df_data_cent = df_data_cent.query(f'model_output > {score_eff_arrays_dict[bin_results][len(eff_array)-1]}')
-                df_data_cent.to_parquet(f'df/{bin_results}', compression='gzip')
+                df_data_cent = df_data_cent.query(
+                    f'model_output > {score_eff_arrays_dict[bin_results][len(eff_array)-1]}')
+                df_data_cent.to_parquet(
+                    f'df/{bin_results}', compression='gzip')

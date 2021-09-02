@@ -13,23 +13,32 @@
 
 #include "AliAnalysisTaskHyperTriton2He3piML.h"
 
+using namespace ROOT::Math;
+
 class Table2
 {
 public:
   Table2(std::string name, std::string title);
-  void Fill(const RHyperTritonHe3pi &RHyperVec, const RCollision &RColl);
+  void Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl);
+  void Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyper, const RCollision &RColl);
+
   void Write() { tree->Write(); }
 
 private:
   TTree *tree;
-  TF1 *fHe3TPCcalib;
-  float pt;
+
+  float gPt;
+  float gCt;
+  int gMatter;
+  float gRapidity;
+  float centrality;
+  int trigger;
+
+  float pt = -1;
   float TPCnSigmaHe3;
   float ct;
   float m;
-  float ArmenterosAlpha;
   float V0CosPA;
-  float V0Chi2;
   float PiProngPt;
   float He3ProngPt;
   float ProngsDCA;
@@ -39,9 +48,6 @@ private:
   float NitsClustersHe3;
   float NpidClustersPion;
   float TPCnSigmaPi;
-  float Lrec;
-  float centrality;
-  int   trigger;
   float fZ;
   float V0radius;
   float PiProngPvDCAXY;
@@ -59,13 +65,19 @@ private:
 Table2::Table2(std::string name, std::string title)
 {
   tree = new TTree(name.data(), title.data());
+
+  tree->Branch("gPt", &gPt);
+  tree->Branch("gCt", &gCt);
+  tree->Branch("gMatter", &gMatter);
+  tree->Branch("gRapidity", &gRapidity);
+
+
   tree->Branch("pt", &pt);
   tree->Branch("TPCnSigmaHe3", &TPCnSigmaHe3);
   tree->Branch("ct", &ct);
   tree->Branch("m", &m);
-  tree->Branch("ArmenterosAlpha", &ArmenterosAlpha);
+
   tree->Branch("V0CosPA", &V0CosPA);
-  tree->Branch("V0Chi2", &V0Chi2);
   tree->Branch("PiProngPt", &PiProngPt);
   tree->Branch("He3ProngPt", &He3ProngPt);
   tree->Branch("ProngsDCA", &ProngsDCA);
@@ -77,11 +89,9 @@ Table2::Table2(std::string name, std::string title)
   tree->Branch("NpidClustersPion", &NpidClustersPion);
   tree->Branch("NitsClustersHe3", &NitsClustersHe3);
   tree->Branch("TPCnSigmaPi", &TPCnSigmaPi);
-  tree->Branch("Lrec", &Lrec);
   tree->Branch("centrality", &centrality);
   tree->Branch("trigger", &trigger);
-
-  tree->Branch("fZ", &fZ);  
+  tree->Branch("fZ", &fZ);
   tree->Branch("V0radius", &V0radius);
   tree->Branch("Rapidity", &Rapidity);
   tree->Branch("PseudoRapidityHe3", &PseudoRapidityHe3);
@@ -93,15 +103,43 @@ Table2::Table2(std::string name, std::string title)
   tree->Branch("TPCsignalHe3", &TPCsignalHe3);
 };
 
-void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
+void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl)
 {
+
   centrality = RColl.fCent;
   trigger = RColl.fTrigger;
 
-  fZ = RColl.fZ;
+  const double len = Hypote(SHyper.fDecayX, SHyper.fDecayY, SHyper.fDecayZ);
+
+  const LorentzVector<PxPyPzM4D<double>> sHe3{SHyper.fPxHe3, SHyper.fPyHe3, SHyper.fPzHe3, AliPID::ParticleMass(AliPID::kHe3)};
+  const LorentzVector<PxPyPzM4D<double>> sPi{SHyper.fPxPi, SHyper.fPyPi, SHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion)};
+  const LorentzVector<PxPyPzM4D<double>> sMother = sHe3 + sPi;
+  gMatter = SHyper.fPdgCode > 0;
+  gCt = len * kHyperMass / sMother.P();
+  gRapidity = sMother.Rapidity();
+  gPt = sMother.Pt();
+  pt = -1;
+  tree->Fill();
+};
+
+void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
+{
+
+  centrality = RColl.fCent;
+  trigger = RColl.fTrigger;
+
+  const double len = Hypote(SHyper.fDecayX, SHyper.fDecayY, SHyper.fDecayZ);
+  const LorentzVector<PxPyPzM4D<double>> sHe3{SHyper.fPxHe3, SHyper.fPyHe3, SHyper.fPzHe3, AliPID::ParticleMass(AliPID::kHe3)};
+  const LorentzVector<PxPyPzM4D<double>> sPi{SHyper.fPxPi, SHyper.fPyPi, SHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion)};
+  const LorentzVector<PxPyPzM4D<double>> sMother = sHe3 + sPi;
+  gMatter = SHyper.fPdgCode > 0;
+  gCt = len * kHyperMass / sMother.P();
+  gRapidity = sMother.Rapidity();
+  gPt = sMother.Pt();
+
+
   double eHe3 = Hypote(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, kHe3Mass);
   double ePi = Hypote(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion));
-
   TLorentzVector he3Vector, piVector, hyperVector;
   he3Vector.SetPxPyPzE(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, eHe3);
   piVector.SetPxPyPzE(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, ePi);
@@ -127,9 +165,9 @@ void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
   float alpha = (qP - qN) / (qP + qN);
   ct = kHyperMass * (Hypote(RHyper.fDecayX, RHyper.fDecayY, RHyper.fDecayZ) / hyperVector.P());
   m = hyperVector.M();
-  ArmenterosAlpha = alpha;
+
   V0CosPA = CosPA;
-  V0Chi2 = RHyper.fChi2V0;
+
   PiProngPt = Hypote(RHyper.fPxPi, RHyper.fPyPi);
   He3ProngPt = Hypote(RHyper.fPxHe3, RHyper.fPyHe3);
   ProngsDCA = RHyper.fDcaV0daughters;
@@ -137,7 +175,6 @@ void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
   He3ProngPvDCA = RHyper.fDcaHe32PrimaryVertex;
   PiProngPvDCAXY = RHyper.fDcaPi2PrimaryVertexXY;
   He3ProngPvDCAXY = RHyper.fDcaHe32PrimaryVertexXY;
-  Lrec = Hypote(RHyper.fDecayX, RHyper.fDecayY, RHyper.fDecayZ);
   V0radius = Hypote(RHyper.fDecayX, RHyper.fDecayY);
   NpidClustersHe3 = RHyper.fNpidClustersHe3;
   NitsClustersHe3 = RHyper.fITSclusHe3;
@@ -153,8 +190,8 @@ void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
   PseudoRapidityPion = piVector.PseudoRapidity();
   TPCsignalHe3 = RHyper.fTPCsignalHe3;
   TPCmomHe3 = RHyper.fTPCmomHe3;
-  if (2.96 < m < 3.04 && ct < 45 && NpidClustersHe3 > 30 && NpidClustersPion > 30)
-    tree->Fill();
-}
+
+  tree->Fill();
+};
 
 #endif
