@@ -126,7 +126,7 @@ def fit_hist(histo, cent_class, pt_range, ct_range, nsigma=3, model="pol2", fixs
         "_antimatter": '{}^{3}_{#bar{#Lambda}}#bar{H}#rightarrow ^{3}#bar{He}#pi^{+}',
     }
 
-    string = decay_label[split] + ', %i #leq #it{ct} < %i cm %i #leq #it{p}_{T} < %i GeV/#it{c} ' % (ct_range[0], ct_range[1], pt_range[0], pt_range[1])
+    string = decay_label[split] + ', %i #leq #it{ct} < %i cm %.1f #leq #it{p}_{T} < %.1f GeV/#it{c} ' % (ct_range[0], ct_range[1], pt_range[0], pt_range[1])
     pinfo2.AddText(string)
 
     string = f'Significance ({nsigma:.0f}#sigma) {signif:.1f} #pm {errsignif:.1f} '
