@@ -17,6 +17,7 @@ from ROOT import AliPWGFunc
 
 
 isAOD = False
+is2015 = True
 
 
 def rename_mc_df_columns(df):
@@ -46,22 +47,32 @@ he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-cent_class = [0,10]
-n_ev = 98e6
+cent_class = [10,30]
+n_ev = 11e6 if is2015==True else 98e6
 
 mass_range = [2.96,3.04]
 n_bins = 40
 
 if isAOD:
+    if is2015:
+        print('No AOD tree for 2015 sample')
+        exit()
+
     df_mc = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root")["HyperTree"].arrays(library="pd")
     rename_mc_df_columns(df_mc)
     df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_18_red.parquet.gzip")
 
 
 else:
-    hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
-    df_mc = hdl.get_data_frame()
-    df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+    if is2015:
+        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
+        df_mc = hdl.get_data_frame()
+        df = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
+    else:
+        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
+        df_mc = hdl.get_data_frame()
+        df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+        
 
 
 # print(np.min(df.query('pt>0')))
@@ -73,9 +84,8 @@ apply_pt_rejection(df_mc, bw)
 
 
 
-
-pt_bins = [[2,3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
-# pt_bins = [[0,9]]
+# pt_bins = [[2,3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
+pt_bins = [[0,9]]
 
 flat_pt_bins = [item for sublist in pt_bins for item in sublist]
 bins = np.unique(np.array(flat_pt_bins, dtype=float))
@@ -87,14 +97,17 @@ if isAOD:
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
     ffile = ROOT.TFile(f"std_analysis_2018_{cent_class[0]}_{cent_class[1]}_AOD.root", "recreate")
 else:
-    ffile = ROOT.TFile(f"std_analysis_2018_{cent_class[0]}_{cent_class[1]}.root", "recreate")
+    if is2015:
+        ffile = ROOT.TFile(f"std_analysis_2015_{cent_class[0]}_{cent_class[1]}.root", "recreate")
+    else:
+        ffile = ROOT.TFile(f"std_analysis_2018_{cent_class[0]}_{cent_class[1]}.root", "recreate")
     df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
 
 
-df = df.query('Matter==1')
-df_rec = df_rec.query('Matter==1')
-df_gen = df_gen.query('Matter==1')
+# df = df.query('Matter==0')
+# df_rec = df_rec.query('Matter==0')
+# df_gen = df_gen.query('Matter==0')
 
 
 
@@ -134,9 +147,14 @@ for ind,pt_bin in enumerate(pt_bins):
                         selected_data_hist = hp_std.h1_invmass(selected_data_hist[0], mass_range=mass_range, bins=n_bins, name=f'{cut}')
                         fit_result = hp_std.fit_hist(selected_data_hist, cent_class =cent_class, pt_range = pt_bin, ct_range = [2,35])
                         bin_width = pt_bin[1] - pt_bin[0]
-                        pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/bin_width)
-                        pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/n_ev/bin_width)
-                        efficiency.SetBinContent(ind + 1, eff)
+                        if len(pt_bins)>1:
+                            pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/bin_width/2)
+                            pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/n_ev/bin_width/2)
+                            efficiency.SetBinContent(ind + 1, eff)
+                        else:
+                            pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/2)
+                            pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/n_ev/2)
+                            efficiency.SetBinContent(ind + 1, eff)
 pwg = AliPWGFunc()
 histo,Integral, integral_error, bw_fit = hp.bw_fit(pt_spectrum, bw, pwg)
 print("yield: ", Integral, ", error: ", integral_error)

@@ -21,10 +21,10 @@ void GenerateTableFromMC()
 {
   gRandom->SetSeed(1995);
 
-  string inFileName = "HyperTritonTree_20g7.root";
-  string inFileArg = "/data/fmazzasc/PbPb_2body/trees/new_trees/" + inFileName;
+  string inFileName = "HyperTritonTree_b.root";
+  string inFileArg = "/data/fmazzasc/PbPb_2body/trees/" + inFileName;
 
-  string outFileName = "SignalTable_20g7_flat_pt.root";
+  string outFileName = "SignalTable_16h7abc_flat_pt.root";
 
   string bwFileName;
   int cent_num;
