@@ -18,6 +18,8 @@ from ROOT import AliPWGFunc
 
 isAOD = False
 is2015 = True
+minimumBias = True
+
 
 
 def rename_mc_df_columns(df):
@@ -47,8 +49,8 @@ he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-cent_class = [10,30]
-n_ev = 11e6 if is2015==True else 98e6
+cent_class = [0,10]
+n_ev = 11e6*(cent_class[1] - cent_class[0])/10 if is2015==True or minimumBias else 98e6
 
 mass_range = [2.96,3.04]
 n_bins = 40
@@ -74,8 +76,8 @@ else:
         df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
         
 
-
-# print(np.min(df.query('pt>0')))
+if minimumBias: 
+    df = df.query('trigger%2!=0 and trigger!=0')
 
 bw_file = ROOT.TFile('../utils/BlastWaveFits.root')
 bw = bw_file.Get("BlastWave/BlastWave0")
@@ -91,23 +93,26 @@ flat_pt_bins = [item for sublist in pt_bins for item in sublist]
 bins = np.unique(np.array(flat_pt_bins, dtype=float))
 
 
+AOD_string = "AOD" if isAOD else "ESD"
+MB_string = "_MB" if minimumBias else ""
+year_string = "2015" if is2015 else "2018"
+
+
+ffile = ROOT.TFile(f"{AOD_string}_{year_string}_{cent_class[0]}_{cent_class[1]}{MB_string}.root", "recreate")
+
 
 if isAOD:
     df_rec = df_mc.query('rej>0 and isReconstructed==True and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
-    ffile = ROOT.TFile(f"std_analysis_2018_{cent_class[0]}_{cent_class[1]}_AOD.root", "recreate")
+  
 else:
-    if is2015:
-        ffile = ROOT.TFile(f"std_analysis_2015_{cent_class[0]}_{cent_class[1]}.root", "recreate")
-    else:
-        ffile = ROOT.TFile(f"std_analysis_2018_{cent_class[0]}_{cent_class[1]}.root", "recreate")
     df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
 
 
-# df = df.query('Matter==0')
-# df_rec = df_rec.query('Matter==0')
-# df_gen = df_gen.query('Matter==0')
+# df = df.query('Matter==1')
+# df_rec = df_rec.query('Matter==1')
+# df_gen = df_gen.query('Matter==1')
 
 
 
