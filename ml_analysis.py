@@ -94,6 +94,8 @@ if SPLIT:
 
 def create_dic_from_file(filename):
     tf1_dic = {}
+    tf1_dic['0_5'] = filename.Get('results/func_0_5')
+    tf1_dic['5_10'] = filename.Get('results/func_5_10')
     tf1_dic['0_10'] = filename.Get('results/func_0_10')
     tf1_dic['10_30'] = filename.Get('results/func_10_30')
     tf1_dic['30_50'] = filename.Get('results/func_30_50')
@@ -269,7 +271,6 @@ if APPLICATION:
 
                 if cent_bins[0] == 10 or cent_bins[0] == 50:
                     print('selecting kINT7..')
-                    # select kint7 in [10,30] and [50,90]
                     df_data_cent = df_data_cent.query(
                         'trigger%2!=0 and trigger!=0')
 

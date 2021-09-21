@@ -8,11 +8,11 @@ args = parser.parse_args()
 
 
 
-os.system(f"python3 ml_analysis.py {args.config} -split -eff -train -computescore")
-os.system(f"python3 ml_analysis.py {args.config} -split  -application")
+os.system(f"python3 ml_analysis.py {args.config} -split -train -n_iter 0")
+os.system(f"python3 ml_analysis.py {args.config} -split  -application -n_iter 0")
 os.system(f"python3 signal_extraction.py {args.config}")
 os.system(f"python3 significance_scan.py {args.config}")
-# os.system(f"python3 he3_absorption_analysis.py {args.config}")
+os.system(f"python3 pt_spectra.py {args.config}")
 
 
 

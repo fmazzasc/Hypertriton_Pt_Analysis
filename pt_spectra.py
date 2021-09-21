@@ -117,13 +117,6 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
                 eff_cut_sign *= -1
                 formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin]+eff_cut_increment*eff_cut_sign)
 
-            
-
-
-            # if signal_extraction_keys.count(f"fInvMass_{formatted_eff_cut};1".encode())==0:
-            #     continue
-            
-            # print('ehi')
 
 
 
@@ -194,7 +187,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         bw = -1
         print("yield: ", Integral, ", error: ", integral_error)
         histo.Write()
-        bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}')
+        bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}_{split}')
         bw_fit.Write()
     
     h_corrected_ratio.Write()

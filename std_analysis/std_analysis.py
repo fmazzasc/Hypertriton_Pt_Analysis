@@ -17,8 +17,8 @@ from ROOT import AliPWGFunc
 
 
 isAOD = False
-is2015 = True
-minimumBias = True
+is2015 = False
+minimumBias = False
 
 
 
@@ -43,14 +43,14 @@ def apply_pt_rejection(df, pt_shape):
     df['rej'] = rej_flag
 
 
-cosPAcuts = np.linspace(0.9998, 0.9999, 1)
+cosPAcuts = np.linspace(0.9999, 0.9999, 1)
 pidHe3cuts = np.linspace(110, 121, 1)
 he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-cent_class = [0,10]
-n_ev = 11e6*(cent_class[1] - cent_class[0])/10 if is2015==True or minimumBias else 98e6
+cent_class = [5,10]
+
 
 mass_range = [2.96,3.04]
 n_bins = 40
@@ -63,6 +63,7 @@ if isAOD:
     df_mc = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root")["HyperTree"].arrays(library="pd")
     rename_mc_df_columns(df_mc)
     df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_18_red.parquet.gzip")
+    an_file = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/AnalysisResults_18.root")
 
 
 else:
@@ -70,11 +71,27 @@ else:
         hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
         df = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
+        an_file = uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_2015.root')
     else:
         hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
         df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+        an_file = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/AnalysisResults_18.root")
         
+
+
+cent_counts, cent_edges = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()  ##does not wprk with uproot3 
+cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
+cent_range_map = np.logical_and(cent_bin_centers > cent_class[0], cent_bin_centers < cent_class[1])
+counts_cent_range = cent_counts[cent_range_map]
+n_ev = np.sum(counts_cent_range)
+
+
+if is2015==False and minimumBias:
+    n_ev = 11e6*(cent_class[1] - cent_class[0])/10 
+
+
+print(f'Number of events: {n_ev}')
 
 if minimumBias: 
     df = df.query('trigger%2!=0 and trigger!=0')
@@ -86,8 +103,8 @@ apply_pt_rejection(df_mc, bw)
 
 
 
-# pt_bins = [[2,3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
-pt_bins = [[0,9]]
+pt_bins = [[2,3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
+# pt_bins = [[0,9]]
 
 flat_pt_bins = [item for sublist in pt_bins for item in sublist]
 bins = np.unique(np.array(flat_pt_bins, dtype=float))
@@ -98,7 +115,7 @@ MB_string = "_MB" if minimumBias else ""
 year_string = "2015" if is2015 else "2018"
 
 
-ffile = ROOT.TFile(f"{AOD_string}_{year_string}_{cent_class[0]}_{cent_class[1]}{MB_string}.root", "recreate")
+ffile = ROOT.TFile(f"results/{AOD_string}_{year_string}_{cent_class[0]}_{cent_class[1]}{MB_string}.root", "recreate")
 
 
 if isAOD:
@@ -108,11 +125,6 @@ if isAOD:
 else:
     df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
-
-
-# df = df.query('Matter==1')
-# df_rec = df_rec.query('Matter==1')
-# df_gen = df_gen.query('Matter==1')
 
 
 
@@ -133,7 +145,7 @@ for ind,pt_bin in enumerate(pt_bins):
                     for pDCA in prongsDCA:
                         if pt_bin[0]==2:
                             cosPA = 0.99995
-                            pidHe3 = 110
+                            pidHe3 = 120
                         print('********************************************************************')
                         cut = f'1<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 2 and ProngsDCA < {pDCA}'
                         cut_cent = cut + f" and {cent_class[0]}<centrality<{cent_class[1]}"
@@ -160,6 +172,8 @@ for ind,pt_bin in enumerate(pt_bins):
                             pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/2)
                             pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/n_ev/2)
                             efficiency.SetBinContent(ind + 1, eff)
+
+
 pwg = AliPWGFunc()
 histo,Integral, integral_error, bw_fit = hp.bw_fit(pt_spectrum, bw, pwg)
 print("yield: ", Integral, ", error: ", integral_error)
