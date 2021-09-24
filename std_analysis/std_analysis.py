@@ -49,7 +49,7 @@ he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-cent_class = [5,10]
+cent_class = [0,5]
 
 
 mass_range = [2.96,3.04]
@@ -145,10 +145,10 @@ for ind,pt_bin in enumerate(pt_bins):
                     for pDCA in prongsDCA:
                         if pt_bin[0]==2:
                             cosPA = 0.99995
-                            pidHe3 = 120
+                            pidHe3 = 110
                         print('********************************************************************')
-                        cut = f'1<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 2 and ProngsDCA < {pDCA}'
-                        cut_cent = cut + f" and {cent_class[0]}<centrality<{cent_class[1]}"
+                        cut = f'2<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 2 and ProngsDCA < {pDCA}'
+                        cut_cent = cut + f" and {cent_class[0]}<=centrality<{cent_class[1]}"
                         print("#################################")
                         print("CUT: ", cut_cent)
                         print("#################################")
@@ -162,7 +162,7 @@ for ind,pt_bin in enumerate(pt_bins):
                         df_sel = df.query(cut_cent)
                         selected_data_hist = np.histogram(np.array(df_sel['m']), bins=n_bins, range=mass_range)                        
                         selected_data_hist = hp_std.h1_invmass(selected_data_hist[0], mass_range=mass_range, bins=n_bins, name=f'{cut}')
-                        fit_result = hp_std.fit_hist(selected_data_hist, cent_class =cent_class, pt_range = pt_bin, ct_range = [2,35])
+                        fit_result = hp_std.fit_hist(selected_data_hist, cent_class=cent_class, pt_range=pt_bin, ct_range=[1,35])
                         bin_width = pt_bin[1] - pt_bin[0]
                         if len(pt_bins)>1:
                             pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/bin_width/2)

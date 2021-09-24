@@ -18,8 +18,9 @@ using namespace ROOT::Math;
 class Table2
 {
 public:
-  Table2(std::string name, std::string title);
+  Table2(std::string name, std::string title, bool isMC=false);
   void Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl);
+  void Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl);
   void Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyper, const RCollision &RColl);
 
   void Write() { tree->Write(); }
@@ -62,15 +63,17 @@ private:
   float TPCsignalHe3;
 };
 
-Table2::Table2(std::string name, std::string title)
+Table2::Table2(std::string name, std::string title, bool isMC = false)
 {
   tree = new TTree(name.data(), title.data());
 
-  tree->Branch("gPt", &gPt);
-  tree->Branch("gCt", &gCt);
-  tree->Branch("gMatter", &gMatter);
-  tree->Branch("gRapidity", &gRapidity);
-
+  if (isMC)
+  {
+    tree->Branch("gPt", &gPt);
+    tree->Branch("gCt", &gCt);
+    tree->Branch("gMatter", &gMatter);
+    tree->Branch("gRapidity", &gRapidity);
+  }
 
   tree->Branch("pt", &pt);
   tree->Branch("TPCnSigmaHe3", &TPCnSigmaHe3);
@@ -122,6 +125,68 @@ void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl)
   tree->Fill();
 };
 
+void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
+{
+
+  centrality = RColl.fCent;
+  trigger = RColl.fTrigger;
+
+  double eHe3 = Hypote(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, kHe3Mass);
+  double ePi = Hypote(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion));
+  TLorentzVector he3Vector, piVector, hyperVector;
+  he3Vector.SetPxPyPzE(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, eHe3);
+  piVector.SetPxPyPzE(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, ePi);
+  hyperVector = piVector + he3Vector;
+  TVector3 v(RHyper.fDecayX, RHyper.fDecayY, RHyper.fDecayZ);
+  float pointAngle = hyperVector.Angle(v);
+  float CosPA = std::cos(pointAngle);
+
+  float qP, qN, qT;
+  if (RHyper.fMatter == true)
+  {
+    qP = SProd(hyperVector, he3Vector) / fabs(hyperVector.P());
+    qN = SProd(hyperVector, piVector) / fabs(hyperVector.P());
+    qT = VProd(hyperVector, he3Vector) / fabs(hyperVector.P());
+  }
+  else
+  {
+    qN = SProd(hyperVector, he3Vector) / fabs(hyperVector.P());
+    qP = SProd(hyperVector, piVector) / fabs(hyperVector.P());
+    qT = VProd(hyperVector, piVector) / fabs(hyperVector.P());
+  }
+
+  float alpha = (qP - qN) / (qP + qN);
+  ct = kHyperMass * (Hypote(RHyper.fDecayX, RHyper.fDecayY, RHyper.fDecayZ) / hyperVector.P());
+  m = hyperVector.M();
+
+  V0CosPA = CosPA;
+
+  PiProngPt = Hypote(RHyper.fPxPi, RHyper.fPyPi);
+  He3ProngPt = Hypote(RHyper.fPxHe3, RHyper.fPyHe3);
+  ProngsDCA = RHyper.fDcaV0daughters;
+  PiProngPvDCA = RHyper.fDcaPi2PrimaryVertex;
+  He3ProngPvDCA = RHyper.fDcaHe32PrimaryVertex;
+  PiProngPvDCAXY = RHyper.fDcaPi2PrimaryVertexXY;
+  He3ProngPvDCAXY = RHyper.fDcaHe32PrimaryVertexXY;
+  V0radius = Hypote(RHyper.fDecayX, RHyper.fDecayY);
+  NpidClustersHe3 = RHyper.fNpidClustersHe3;
+  NitsClustersHe3 = RHyper.fITSclusHe3;
+  NpidClustersPion = RHyper.fNpidClustersPi;
+  TPCnSigmaPi = RHyper.fTPCnSigmaPi;
+  TPCnSigmaHe3 = RHyper.fTPCnSigmaHe3;
+  TOFnSigmaHe3 = RHyper.fTOFnSigmaHe3;
+  TOFnSigmaPi = RHyper.fTOFnSigmaPi;
+  pt = hyperVector.Pt();
+  Rapidity = hyperVector.Rapidity();
+  Matter = RHyper.fMatter;
+  PseudoRapidityHe3 = he3Vector.PseudoRapidity();
+  PseudoRapidityPion = piVector.PseudoRapidity();
+  TPCsignalHe3 = RHyper.fTPCsignalHe3;
+  TPCmomHe3 = RHyper.fTPCmomHe3;
+
+  tree->Fill();
+};
+
 void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
 {
 
@@ -136,7 +201,6 @@ void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyp
   gCt = len * kHyperMass / sMother.P();
   gRapidity = sMother.Rapidity();
   gPt = sMother.Pt();
-
 
   double eHe3 = Hypote(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, kHe3Mass);
   double ePi = Hypote(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion));

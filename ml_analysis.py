@@ -92,8 +92,9 @@ if SPLIT:
 
 
 
-def create_dic_from_file(filename):
+def create_dic_from_file(filename, cent_class, split):
     tf1_dic = {}
+
     tf1_dic['0_5'] = filename.Get('results/func_0_5')
     tf1_dic['5_10'] = filename.Get('results/func_5_10')
     tf1_dic['0_10'] = filename.Get('results/func_0_10')
@@ -267,7 +268,7 @@ if APPLICATION:
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
 
                 df_data_cent = df_data.query(
-                    f'Matter {split_ineq_sign} and centrality > {cent_bins[0]} and centrality <= {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
+                    f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
                 if cent_bins[0] == 10 or cent_bins[0] == 50:
                     print('selecting kINT7..')

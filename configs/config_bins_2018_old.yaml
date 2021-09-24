@@ -45,7 +45,7 @@ TRAINING_COLUMNS:
   - He3ProngPvDCAXY
   - He3ProngPvDCA # totale
   - PiProngPvDCA
-  # - NpidClustersHe3
+  - NpidClustersHe3
   - TPCnSigmaHe3
   - TPCnSigmaPi
   # - NitsClustersHe3

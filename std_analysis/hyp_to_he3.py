@@ -46,7 +46,6 @@ cv.Write('he3_hyp')
 
 
 ratio_spectra = hyp_spectrum.Clone('Ratio')
-
 hyp_integral_arr = []
 
 for ibin_hyp in range(1, ratio_spectra.GetNbinsX() + 1):

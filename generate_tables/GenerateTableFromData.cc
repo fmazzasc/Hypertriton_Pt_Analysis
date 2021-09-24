@@ -18,10 +18,10 @@ using namespace std;
 void GenerateTableFromData(bool likeSign = false)
 {
 
-  string dataDir = "/data/fmazzasc/PbPb_2body/trees";
-  string tableDir = "/data/fmazzasc/PbPb_2body/old_stuff";
+  string dataDir = "/data/fmazzasc/PbPb_2body/no_pt_cut";
+  string tableDir = "/data/fmazzasc/PbPb_2body/no_pt_cut";
 
-  string lsString = likeSign ? "_pass3_LS.root" : "_pass3.root";
+  string lsString = likeSign ? "LS.root" : ".root";
 
   string inFileNameQ = "HyperTritonTree_18q";
   string inFileArgQ = dataDir + "/" + inFileNameQ + lsString;
@@ -30,10 +30,10 @@ void GenerateTableFromData(bool likeSign = false)
   string inFileArgR = dataDir + "/" + inFileNameR + lsString;
 
   TChain inputChain("_custom/fTreeV0");
-  inputChain.AddFile(inFileArgQ.data());
+  // inputChain.AddFile(inFileArgQ.data());
   inputChain.AddFile(inFileArgR.data());
 
-  string outFileName = "DataTable_18qr";
+  string outFileName = "DataTable_18r";
   string outFileArg = tableDir + "/" + outFileName + lsString;
 
 
@@ -43,10 +43,12 @@ void GenerateTableFromData(bool likeSign = false)
   TTreeReaderArray<RHyperTritonHe3pi> RHyperVec = {fReader, "RHyperTriton"};
   TTreeReaderValue<RCollision> RColl = {fReader, "RCollision"}; 
   Table2 tree("DataTable", "Data Table");
-  while (fReader.Next())
+  int counter = 0;
+  while (fReader.Next() and counter < 10)
   {
     for (auto &RHyper : RHyperVec)
       tree.Fill(RHyper, *RColl);
+    counter ++;
   }
 
   outFile.cd();

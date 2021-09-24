@@ -187,8 +187,9 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         bw = -1
         print("yield: ", Integral, ", error: ", integral_error)
         histo.Write()
-        bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}_{split}')
-        bw_fit.Write()
+        if split=='matter':
+            bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}')
+            bw_fit.Write()
     
     h_corrected_ratio.Write()
 
