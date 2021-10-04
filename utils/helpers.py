@@ -125,7 +125,7 @@ def bw_fit(histo, bw, pwg):
     bw_fit.SetParLimits(3, 0, 2)
     bw_fit.SetParLimits(4, 0, 5e3)
 
-    fit_result = histo.Fit(bw_fit, "SMI+", "", 2,9)
+    fit_result = histo.Fit(bw_fit, "SMI+", "", 1,9)
     cov_matrix = fit_result.GetCovarianceMatrix()
     integral = bw_fit.Integral(0,10, 1e5)
     integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray())

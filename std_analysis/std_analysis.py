@@ -17,8 +17,10 @@ from ROOT import AliPWGFunc
 
 
 isAOD = False
-is2015 = False
-minimumBias = False
+is2015 = True
+minimumBias = True
+
+is_2018_and_2015 = False
 
 
 
@@ -43,13 +45,14 @@ def apply_pt_rejection(df, pt_shape):
     df['rej'] = rej_flag
 
 
-cosPAcuts = np.linspace(0.9999, 0.9999, 1)
-pidHe3cuts = np.linspace(110, 121, 1)
+cosPAcuts = np.linspace(0.9996, 0.99995, 1)
+pidHe3cuts = np.linspace(80, 101, 1)
 he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-cent_class = [0,5]
+
+cent_class = [0,10]
 
 
 mass_range = [2.96,3.04]
@@ -71,12 +74,16 @@ else:
         hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
         df = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
-        an_file = uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_2015.root')
+        an_file = uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_15o.root')
     else:
         hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
-        df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+        # df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+        df = pd.read_parquet('/data/fmazzasc/PbPb_2body/no_pt_cut/DataTable_18qr.parquet.gzip')
         an_file = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/AnalysisResults_18.root")
+        if is_2018_and_2015:
+            df_2015 = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
+            an_2015 = uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_15o.root')
         
 
 
@@ -91,6 +98,14 @@ if is2015==False and minimumBias:
     n_ev = 11e6*(cent_class[1] - cent_class[0])/10 
 
 
+if is_2018_and_2015:
+    cent_counts, cent_edges = an_2015["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()  ##does not wprk with uproot3 
+    cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
+    cent_range_map = np.logical_and(cent_bin_centers > cent_class[0], cent_bin_centers < cent_class[1])
+    counts_cent_range = cent_counts[cent_range_map]
+    n_ev += np.sum(counts_cent_range)
+    df = pd.concat([df, df_2015])
+
 print(f'Number of events: {n_ev}')
 
 if minimumBias: 
@@ -103,8 +118,8 @@ apply_pt_rejection(df_mc, bw)
 
 
 
-pt_bins = [[2,3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
-# pt_bins = [[0,9]]
+# pt_bins = [[1., 3],[3,3.5],[3.5,4],[4,4.5], [4.5,5], [5,6], [6,9]]
+pt_bins = [[2,9]]
 
 flat_pt_bins = [item for sublist in pt_bins for item in sublist]
 bins = np.unique(np.array(flat_pt_bins, dtype=float))
@@ -126,6 +141,7 @@ else:
     df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
 
+df = df.query('Matter==1')
 
 
 ffile.mkdir(f'{cent_class[0]}_{cent_class[1]}')
@@ -143,11 +159,11 @@ for ind,pt_bin in enumerate(pt_bins):
             for he3Pt in he3PtCuts:
                 for piPt in piPtCuts:
                     for pDCA in prongsDCA:
-                        if pt_bin[0]==2:
-                            cosPA = 0.99995
-                            pidHe3 = 110
+                        # if pt_bin[0]<=2:
+                        #     cosPA = 0.9995
+                        #     pidHe3 = 110
                         print('********************************************************************')
-                        cut = f'2<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 2 and ProngsDCA < {pDCA}'
+                        cut = f'2<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 3.5 and ProngsDCA < {pDCA}'
                         cut_cent = cut + f" and {cent_class[0]}<=centrality<{cent_class[1]}"
                         print("#################################")
                         print("CUT: ", cut_cent)
@@ -156,7 +172,11 @@ for ind,pt_bin in enumerate(pt_bins):
                         print(len(df_rec.query(f'pt > {pt_bin[0]} and pt < {pt_bin[1]}'))/len(df_gen.query(f'gPt > {pt_bin[0]} and gPt < {pt_bin[1]}')))
                         print("#################################")
                         print("Efficiency after cuts")
-                        eff = len(df_rec.query(cut))/len(df_gen.query(f'gPt > {pt_bin[0]} and gPt < {pt_bin[1]}'))
+                        if len(pt_bins)>1:
+                            eff = len(df_rec.query(cut))/len(df_gen.query(f'gPt > {pt_bin[0]} and gPt < {pt_bin[1]}'))
+                        else:
+                            print("SINGLE BIN EFFICIENCY")
+                            eff = len(df_rec.query(cut))/len(df_gen)
                         print(eff)
 
                         df_sel = df.query(cut_cent)

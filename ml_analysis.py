@@ -22,7 +22,6 @@ import pickle
 import os
 
 
-
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
@@ -106,11 +105,9 @@ def create_dic_from_file(filename, cent_class, split):
 
 
 if TRAIN:
-
     score_eff_arrays_dict = dict()
     signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
     background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
-
     # make plot directory
     if not os.path.isdir(PLOT_DIR):
         os.mkdir(PLOT_DIR)
@@ -127,24 +124,25 @@ if TRAIN:
         print(f'CENTRALITY BIN: {cent_bins[0]}-{cent_bins[1]}\n')
         print('****************** Reweighting MC and computing Efficiency ***************')
 
-        if N_ITER>0:
-            pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root')
-            TF1_DICT = create_dic_from_file(pt_spectra_file)
-            hp.apply_pt_rejection(signal_tree_handler, TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
-            pt_spectra_file.Close()
-        else:
-            rej_flag = np.ones(len(signal_tree_handler))
-            signal_tree_handler._full_data_frame['rej'] = rej_flag
-            print('Rejection not applied: TF1 dict not given')
-
-        root_file_presel_eff.cd()
-
         for split in SPLIT_LIST:
             split_ineq_sign = '> -0.1'
             if SPLIT:
                 split_ineq_sign = '> 0.5'
             if split == 'antimatter':
                 split_ineq_sign = '< 0.5'
+
+            if N_ITER>0:
+                pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root')
+                TF1_DICT = create_dic_from_file(pt_spectra_file, cent_bins, "antimatter")
+                print(TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
+                hp.apply_pt_rejection(signal_tree_handler, TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
+                pt_spectra_file.Close()
+            else:
+                rej_flag = np.ones(len(signal_tree_handler))
+                signal_tree_handler._full_data_frame['rej'] = rej_flag
+                print('Rejection not applied: TF1 dict not given')
+
+            root_file_presel_eff.cd()
 
             df_signal_cent = signal_tree_handler.apply_preselections(
                 f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
@@ -169,19 +167,19 @@ if TRAIN:
                     f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and {cent_bins[0]}<centrality<{cent_bins[1]}', inplace=False)
 
                 print('Number of signal candidates: ',
-                      len(signal_tree_handler_pt))
+                        len(signal_tree_handler_pt))
                 print('Number of bkg candidates: ',
-                      len(background_tree_handler_pt))
+                        len(background_tree_handler_pt))
 
                 if len(background_tree_handler_pt) > 5*len(signal_tree_handler_pt):
                     background_tree_handler_pt.shuffle_data_frame(
                         size=5*len(signal_tree_handler_pt))
-                
+
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
                 print("BIN RESULTS: ", bin_results)
 
                 train_test_data = train_test_generator([signal_tree_handler_pt, background_tree_handler_pt], [
-                                                       1, 0], test_size=0.5, random_state=RANDOM_STATE)
+                                                        1, 0], test_size=0.5, random_state=RANDOM_STATE)
 
                 ##############################################################
                 # TRAINING AND TEST SET PREPARATION
@@ -226,7 +224,7 @@ if TRAIN:
                     train_test_data_cent[3], test_y_score, efficiency_selected=eff_array, keep_lower=False)
                 score_eff_arrays_dict[bin_results] = score_array
 
-                # write test set data frame
+                    # write test set data frame
                 train_test_data_cent[2]['model_output'] = test_y_score
                 mc_data_cent = train_test_data_cent[2][train_test_data_cent[3] > 0.5]
                 mc_data_cent.to_parquet(
@@ -234,7 +232,7 @@ if TRAIN:
 
                 # save roc-auc
                 del train_test_data_cent
-                ##############################################################
+                    ##############################################################
 
     pickle.dump(score_eff_arrays_dict, open(
         res_dir + "/file_score_eff_dict", "wb"))
@@ -247,8 +245,11 @@ if APPLICATION:
         open(res_dir + "/file_score_eff_dict", "rb"))
 
     for split in SPLIT_LIST:
-        df_data = uproot.open(os.path.expandvars(DATA_PATH))[
-            'DataTable'].arrays(library="pd")
+        if DATA_PATH[-1]!='t':
+            df_data = pd.read_parquet(DATA_PATH)
+        else:            
+            df_data = uproot.open(os.path.expandvars(DATA_PATH))[
+                'DataTable'].arrays(library="pd")
 
         if MERGE_SAMPLES:
             df_2015 = uproot.open(os.path.expandvars(
