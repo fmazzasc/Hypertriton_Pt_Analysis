@@ -116,8 +116,9 @@ def expected_signal_pt(cent_range, pt_range, eff, nevents):
 
 
 
-def bw_fit(histo, bw, pwg):
+def bw_fit(histo, bw, pwg, fit_range=[2,9]):
     params = bw.GetParameters()
+    print("BW: ", bw)
     bw_fit = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])   
     bw_fit.SetParLimits(0, 2.989,2.992)
     bw_fit.SetParLimits(1, 0, 2)
@@ -125,7 +126,7 @@ def bw_fit(histo, bw, pwg):
     bw_fit.SetParLimits(3, 0, 2)
     bw_fit.SetParLimits(4, 0, 5e3)
 
-    fit_result = histo.Fit(bw_fit, "SMI+", "", 1,9)
+    fit_result = histo.Fit(bw_fit, "SMI", "", fit_range[0], fit_range[1])
     cov_matrix = fit_result.GetCovarianceMatrix()
     integral = bw_fit.Integral(0,10, 1e5)
     integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray())
@@ -201,3 +202,55 @@ def apply_pt_rejection(df, pt_shape):
         if rand > frac:
             rej_flag[ind] = -1
     df._full_data_frame['rej'] = rej_flag
+
+
+
+def get_number_of_MB_ev(cent_class, an_file):
+    histo = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][14].to_numpy()
+
+    cent_bin_centers = (histo[1][:-1]+ histo[1][1:])/2
+    cent_range_mask = np.logical_and(cent_bin_centers > cent_class[0], cent_bin_centers < cent_class[1])
+
+    trigger_bin_centers = (histo[2][:-1]+ histo[2][1:])/2
+    trigger_val = np.floor(trigger_bin_centers)
+    trigger_mask = trigger_val%2 != 0
+
+    filtered_histo = histo[0][cent_range_mask] #apply cent mask
+    filtered_histo = filtered_histo[:,trigger_mask] #apply trigger mask
+
+    return np.sum(filtered_histo)
+
+
+
+def get_pt_shape_cent(cent_class):
+
+    cent_bins_new =  [[0,5],[5,10],[10,30],[30,50],[50,90]]
+    cent_bins_MB = [[0, 10], [10, 40], [40, 90]]
+    # functions
+    func = {}
+    func_max = {}
+
+    func_names = ["BGBW", "Boltzmann", "Mt-exp", "Pt-exp", "LevyTsallis"]
+    func_names_MB = ["BlastWave", "Boltzmann", "LevyTsallis", "Mt-exp"]
+
+    # functions input files
+    input_func_file = ROOT.TFile("/home/fmazzasc/Hypertriton/Hypertriton_Pt_Analysis/utils/Anti_fits.root")
+    input_func_file_MB = ROOT.TFile("/home/fmazzasc/Hypertriton/Hypertriton_Pt_Analysis/utils/BlastWaveFits.root")
+
+    # get functions and maxima from file
+
+    for i_cent in range(len(cent_bins_new)):
+        for i_fun in range(len(func_names)):
+            cent_bins = cent_bins_new[i_cent]
+            key = f"cent_{cent_bins[0]}_{cent_bins[1]}_func_{func_names[i_fun]}"
+            func[key] = input_func_file.Get(f"{func_names[i_fun]}/{i_cent + 1}/{func_names[i_fun]}{i_cent + 1}")
+            func_max[key] = func[key].GetMaximum()
+
+    for i_cent in range(len(cent_bins_MB)):
+        for i_fun in range(len(func_names_MB)):
+            cent_bins = cent_bins_MB[i_cent]
+            key = f"cent_{cent_bins[0]}_{cent_bins[1]}_func_{func_names_MB[i_fun]}"
+            func[key] = input_func_file_MB.Get(f"{func_names_MB[i_fun]}/{func_names_MB[i_fun]}{i_cent}")
+            func_max[key] = func[key].GetMaximum()
+
+    return func[f"cent_{cent_class[0]}_{cent_class[1]}_func_BGBW"]

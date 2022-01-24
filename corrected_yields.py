@@ -64,13 +64,13 @@ eff_cut_dict = pickle.load(open(res_dir + "/file_eff_cut_dict", "rb"))
 presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
 signal_extraction_file = ROOT.TFile.Open(res_dir + '/SignalExtraction.root')
 signal_extraction_up = uproot.open(res_dir + '/SignalExtraction.root')
-# absorption_correction_file = uproot.open(f"results{RESULTS_SUBDIR}/He3_abs.root")
+absorption_correction_file = uproot.open(f"utils/He3_abs.root")
 
-pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root', 'recreate')
+corrected_yields_file = ROOT.TFile.Open(res_dir + '/corrected_yields.root', 'recreate')
 
+bw_list = []
 
 for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
-
 
     flat_pt_bins = [item for sublist in pt_bins_cent for item in sublist]
     bins = np.unique(np.array(flat_pt_bins, dtype=float))
@@ -92,11 +92,11 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()        
         # get absorption correction
         func = "BlastWave" if cent_bins[0]<1 else "BGBW"
-        # absorption_counts = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].values
-        # absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].edges
+        absorption_counts = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].values
+        absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].edges
 
         presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
-        # absorption_bin_centers = (absorption_edges[1:]+absorption_edges[:-1])/2
+        absorption_bin_centers = (absorption_edges[1:]+absorption_edges[:-1])/2
 
 
         h_corrected_yields[i_split] = ROOT.TH1D(f'fYields_{split}_{cent_bins[0]}_{cent_bins[1]}', f'{split}, {cent_bins[0]}-{cent_bins[1]}%', len(bins)-1, bins)
@@ -117,9 +117,6 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
                 eff_cut_sign *= -1
                 formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin]+eff_cut_increment*eff_cut_sign)
 
-
-
-
             # get signal
             h_raw_yield = signal_extraction_file.Get(f'{bin}_{bkg_shape}/fRawYields;1')
             h_histo = signal_extraction_file.Get(f'{bin}_{bkg_shape}/fInvMass_{formatted_eff_cut}')
@@ -130,18 +127,18 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             raw_yield_error = h_raw_yield.GetBinError(eff_index)
 
             dire = f'{split}_{cent_bins[0]}_{cent_bins[1]}'
-            pt_spectra_file.cd()
-            if not pt_spectra_file.GetListOfKeys().Contains(dire):
-                pt_spectra_file.mkdir(dire)
-            pt_spectra_file.cd(dire)
+            corrected_yields_file.cd()
+            if not corrected_yields_file.GetListOfKeys().Contains(dire):
+                corrected_yields_file.mkdir(dire)
+            corrected_yields_file.cd(dire)
             h_histo.Write()
 
 
             presel_eff_map = np.logical_and(presel_eff_bin_centers > pt_bins[0], presel_eff_bin_centers < pt_bins[1])
-            # absorption_map = np.logical_and(absorption_bin_centers > pt_bins[0], absorption_bin_centers < pt_bins[1])
+            absorption_map = np.logical_and(absorption_bin_centers > pt_bins[0], absorption_bin_centers < pt_bins[1])
 
             presel_eff = presel_eff_counts[presel_eff_map]
-            absorption_corr = 0.97*HYP_HE_CROSS_SECT_SCALING
+            absorption_corr = absorption_counts[absorption_map]
             bdt_eff = float(formatted_eff_cut)
             eff = presel_eff * eff_cut_dict[bin]
 
@@ -156,12 +153,12 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             else:
                 bin_content = h_corrected_ratio.GetBinContent(pt_bin_index)
                 bin_error = h_corrected_ratio.GetBinError(pt_bin_index)
-                # ratio_error = np.sqrt((bin_error/bin_content)**2 + (raw_yield_error/raw_yield)**2)
+                ratio_error = np.sqrt((bin_error/bin_content)**2 + (raw_yield_error/raw_yield)**2)
                 h_corrected_ratio.SetBinContent(pt_bin_index, bin_content/(raw_yield/eff[0]/absorption_corr))
-                # h_corrected_ratio.SetBinError(pt_bin_index, ratio_error)           
+                h_corrected_ratio.SetBinError(pt_bin_index, ratio_error)           
     
 
-            print(f'bin: [{pt_bins[0]}, {pt_bins[1]}], BDT eff = {formatted_eff_cut}, presel_eff = {presel_eff}, raw_yield = {raw_yield}+{raw_yield_error}')
+            print(f'bin: [{pt_bins[0]}, {pt_bins[1]}], BDT eff = {formatted_eff_cut}, presel_eff = {presel_eff}, absorption = {absorption_corr} , raw_yield = {raw_yield}+{raw_yield_error}')
 
 
         # set label
@@ -177,20 +174,28 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
 
         h_corrected_yields[i_split].SetMarkerStyle(20)
         h_corrected_yields[i_split].SetMarkerSize(0.8)
+        h_corrected_yields.Write()
 
-        if not pt_spectra_file.GetListOfKeys().Contains('results'):
-            pt_spectra_file.mkdir('results')
-        pt_spectra_file.cd('results')
-        print(h_corrected_yields[i_split].GetBinContent(2))
-        pwg = AliPWGFunc()
-        histo,Integral, integral_error, bw_fit = hp.bw_fit(h_corrected_yields[i_split], bw, pwg)
-        bw = -1
-        print("yield: ", Integral, ", error: ", integral_error)
-        histo.Write()
-        if split=='matter':
-            bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}')
-            bw_fit.Write()
-    
+        # if not corrected_yields_file.GetListOfKeys().Contains('results'):
+        #     corrected_yields_file.mkdir('results')
+        # corrected_yields_file.cd('results')
+
+        # pwg = AliPWGFunc()
+        # histo,Integral, integral_error, bw_fit = hp.bw_fit(h_corrected_yields[i_split], bw, pwg, fit_range=[3,9])
+        # bw = -1
+        # print("yield: ", Integral, ", error: ", integral_error)
+        # histo.Write()
+        # if split=='antimatter':
+        #     bw_fit.SetName(f'func_{cent_bins[0]}_{cent_bins[1]}')
+        #     bw_fit.Write()
+        #     bw_list.append(bw_fit)
+     
     h_corrected_ratio.Write()
 
-pt_spectra_file.Close()
+
+
+
+
+
+
+corrected_yields_file.Close()

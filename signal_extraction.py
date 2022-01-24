@@ -16,7 +16,7 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 0.8
+MAX_EFF = 0.9
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -54,7 +54,7 @@ res_dir = 'results' + RESULTS_SUBDIR
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
-    SPLIT_LIST = ['antimatter', 'matter']
+    SPLIT_LIST = ['antimatter', 'matter', 'all']
 
 bkg_shape = 'pol1'
 if BKG_EXPO:
@@ -83,7 +83,7 @@ for split in SPLIT_LIST:
                 df_data = pd.concat([df_data_mat, df_data_antimat])
                 df_signal = pd.concat([df_signal_mat, df_signal_antimat])
                 del df_data_antimat,df_data_mat,df_signal_antimat,df_signal_mat
-                score_eff_arrays_dict[bin] = score_eff_arrays_dict[bin_mat]
+                score_eff_arrays_dict[bin] = 0.5*(score_eff_arrays_dict[bin_mat] + score_eff_arrays_dict[bin_antimat])
             
             else:
                 df_data = pd.read_parquet(f'df/{bin}')
@@ -106,7 +106,7 @@ for split in SPLIT_LIST:
                 df_data_sel = df_data.query(f'model_output > {eff_score[1]}')
                 df_signal_sel = df_signal.query(f'model_output > {eff_score[1]}')
                 if len(df_signal_sel) > 1000:
-                    print('Sampling 10000 events...')
+                    print('Sampling 1000 events...')
                     df_signal_sel = df_signal_sel.sample(1000)
 
                 # get invariant mass distribution (data and mc)
@@ -114,8 +114,8 @@ for split in SPLIT_LIST:
                 roo_data = ndarray2roo(np.array(df_data_sel['m']), roo_m)
                 roo_mc_signal = ndarray2roo(np.array(df_signal_sel['m']), roo_m)
 
-                # declare fit model
-                # kde
+
+                # declare fit model kde
                 roo_n_signal = ROOT.RooRealVar('N_{signal}', 'Nsignal', 0., 1.e3)
                 delta_mass = ROOT.RooRealVar("#Deltam", 'deltaM', -0.004, 0.004, 'GeV/c^{2}')
                 shifted_mass = ROOT.RooAddition("mPrime", "m + #Deltam", ROOT.RooArgList(roo_m, delta_mass))
@@ -127,7 +127,7 @@ for split in SPLIT_LIST:
                 
                 else:
                     roo_signal = ROOT.RooKeysPdf("signal", "signal", shifted_mass, roo_m,roo_mc_signal, ROOT.RooKeysPdf.NoMirror, 2)
-                roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
+                    roo_signal_plot = ROOT.RooKeysPdf(roo_signal)
 
                 # background
                 roo_n_background = ROOT.RooRealVar('N_{bkg}', 'Nbackground', 0., 1.e4)
@@ -194,7 +194,7 @@ for split in SPLIT_LIST:
                         gaus.fitTo(roo_mc_signal)
 
                         # mass
-                        mass_val = roo_mean_mc.getVal()-delta_mass.getVal()
+                        mass_val = roo_mean_mc.getVal() - delta_mass.getVal()
 
                         # significance
                         m_set = ROOT.RooArgSet(roo_m)
@@ -258,7 +258,8 @@ for split in SPLIT_LIST:
                             frame = roo_m.frame(2.96, 3.025, 130)
                             frame.SetTitle(str(cent_bins[0])+"-"+str(cent_bins[1])+"%, "+str(pt_bins[0])+'#leq #it{p}_{T}<'+str(pt_bins[1])+" GeV/#it{c}, BDT efficiency = "+str(formatted_eff))
                             roo_mc_signal.plotOn(frame)
-                            roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
+                            if not gaus_signal:
+                                roo_signal_plot.plotOn(frame, ROOT.RooFit.Name("KDE"))
                             gaus.plotOn(frame, ROOT.RooFit.Name("gaussian"), ROOT.RooFit.LineColor(ROOT.kRed), ROOT.RooFit.LineStyle(ROOT.kDashed))
                             cc = ROOT.TCanvas("cc", "cc")
                             if not os.path.isdir('plots/kde_signal'):

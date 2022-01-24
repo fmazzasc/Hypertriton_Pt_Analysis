@@ -117,7 +117,7 @@ def fit_hist(histo, cent_class, pt_range, ct_range, nsigma=3, model="pol2", fixs
     pinfo2.SetTextAlign(30+3)
     pinfo2.SetTextFont(42)
 
-    string = f'ALICE Internal, Pb-Pb 2018 {cent_class[0]}-{cent_class[1]}%'
+    string = f'ALICE Internal, Pb-Pbs {cent_class[0]}-{cent_class[1]}%'
     pinfo2.AddText(string)
     
     decay_label = {

@@ -51,10 +51,10 @@ if not os.path.isdir(f'plots/absorption_correction'):
 split_list = ['antimatter', 'matter']
 
 # mc input file
-mc_file = '/data/fmazzasc/PbPb_2body/AnalysisResults_He3_abs.root'
-outfile = ROOT.TFile(f"results{RESULTS_SUBDIR}/He3_abs.root", "recreate")
-centfile = ROOT.TFile("/data/fmazzasc/PbPb_2body/AnalysisResults_18.root")
-
+mc_file = '/data/fmazzasc/PbPb_2body/absorption_studies/AnalysisResults_incr.root'
+outfile = ROOT.TFile(f"utils/He3_abs_1.5.root", "recreate")
+centfile = ROOT.TFile(params["ANALYSIS_RESULTS_PATH"])
+print(centfile)
 # get event centrality distribution
 cent_dist = centfile.Get("AliAnalysisTaskHyperTriton2He3piML_custom_summary")[11]
 cent_dist_max = cent_dist.GetMaximum()
@@ -100,7 +100,7 @@ h_rec_pt = {}
 for key in func.keys():
         for split in split_list:
             h_abs_radius[f"{split}_" + key] = ROOT.TH1D(f"fAbsRadius_{split}_{cent_bins[0]}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
-            h_abs_ct[f"{split}_" + key] = ROOT.TH1D(f"fAbsCt_{split}_" + key, ";#it{c}t (cm);Entries",50, 1, 35)
+            h_abs_ct[f"{split}_" + key] = ROOT.TH1D(f"fAbsCt_{split}_" + key, ";#it{c}t (cm);Entries",2000, 1, 1000)
             h_gen_radius[f"{split}_" + key] = ROOT.TH1D(f"fGenRadius_{split}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
             h_gen_ct[f"{split}_" + key] = ROOT.TH1D(f"fGenCt_{split}_" + key, ";#it{c}t (cm);Entries", 50, 1, 35)
             h_rec_radius[f"{split}_" + key] = ROOT.TH1D(f"fRecRadius_{split}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
@@ -118,6 +118,7 @@ for key in h_rec_ct.keys():
 
 # read tree
 data_frame_he3 = ROOT.RDataFrame('STree', mc_file)
+data_frame_he3 = data_frame_he3.Range(0,int(1e7))
 data_frame_he3 = data_frame_he3.Filter('pt > 2. and pt < 10. and (flag & 1)==1')
 np_he3 = data_frame_he3.AsNumpy(["pt", "pdg", "absCt", "eta"])
 
@@ -141,12 +142,18 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
     if he3[1] == 1000020030:
         split = "matter"
     absCt = he3[2]
+    key_counter = 0
 
     for key in func.keys():
+
+        # if key_counter ==0:
+        #     print(absCt)
+        #     key_counter += 1
         # rejection sampling to reweight pt
-        if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
-            continue
+        # if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
+        #     continue
         # sample decay ct and ckeck for absorption
+
         decCt = ROOT.gRandom.Exp(7.6)
         # polar angle from eta
         tmp = abs(he3[3])
@@ -158,28 +165,22 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
         abs_radius = absCt*mom/HE_3_MASS
         # decay radius
         dec_radius = decCt*mom/HE_3_MASS
-
         h_abs_ct[f"{split}_" + key].Fill(absCt)
         h_abs_radius[f"{split}_" + key].Fill(abs_radius)
         h_gen_radius[f"{split}_" + key].Fill(dec_radius)
         h_gen_ct[f"{split}_" + key].Fill(decCt)
         h_gen_pt[f"{split}_" + key].Fill(he3[0])
+        # print('gen: ', he3[0])
         if not (decCt > absCt):  # decCt < absCt
             h_rec_radius[f"{split}_" + key].Fill(dec_radius)
             h_rec_ct[f"{split}_" + key].Fill(decCt)
             h_rec_pt[f"{split}_" + key].Fill(he3[0])
+            
         if (absCt < -0.5):  # decCt < absCt
             h_rec_radius[f"{split}_" + key].Fill(dec_radius)
             h_rec_ct[f"{split}_" + key].Fill(decCt)
             h_rec_pt[f"{split}_" + key].Fill(he3[0])
 
-        # sample decay ct and check for absorption
-        decCt = ROOT.gRandom.Exp(7.6)
-        h_gen_ct[f"{split}_" + key].Fill(decCt)
-        h_gen_pt[f"{split}_" + key].Fill(he3[0])
-        if (decCt < absCt) or (absCt < -0.5):  # decCt < absCt
-            h_rec_ct[f"{split}_" + key].Fill(decCt)
-            h_rec_pt[f"{split}_" + key].Fill(he3[0])
     counter +=1
 for key in h_rec_ct.keys():
     key_cent = re.findall(r"[-+]?\d*\.\d+|\d+", key)
@@ -202,5 +203,9 @@ for key in h_rec_ct.keys():
     h_rec_pt[key].GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
     h_rec_pt[key].GetYaxis().SetTitle("1 - #it{f}_{abs}")
     h_rec_pt[key].Write(f"fEffPt_" + key)
+
+    h_abs_ct[key].Write(f"fAbsCt_" + key)
+    h_abs_radius[key].Write(f"fAbsRadius_" + key)
+
 
 outfile.Close()

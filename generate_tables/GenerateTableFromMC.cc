@@ -21,10 +21,10 @@ void GenerateTableFromMC()
 {
   gRandom->SetSeed(1995);
 
-  string inFileName = "HyperTritonTree_b.root";
-  string inFileArg = "/data/fmazzasc/PbPb_2body/trees/" + inFileName;
+  string inFileName = "HyperTritonTree_nocuts_MC.root";
+  string inFileArg = "/data/fmazzasc/PbPb_2body/" + inFileName;
 
-  string outFileName = "SignalTable_16h7abc_flat_pt.root";
+  string outFileName = "SignalTable_20g7_no_cuts_compl.root";
 
   string bwFileName;
   int cent_num;
@@ -38,8 +38,7 @@ void GenerateTableFromMC()
 
   // new flat tree with the features
   TFile outFile(outFileArg.data(), "RECREATE");
-  Table2 table("SignalTable", "Signal Table");
-  GenTable2 genTable("GenTable", "Generated particle table");
+  Table2 table("SignalTable", "Signal Table", true);
 
   while (fReader.Next())
   {

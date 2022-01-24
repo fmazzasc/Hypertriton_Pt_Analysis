@@ -25,11 +25,20 @@ import os
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
+def rename_mc_df_columns(df):
+    rename_dict = {}
+    rename_dict['ptMC'] = 'gPt'
+    rename_dict['etaMC'] = 'gEta'
+    rename_dict['ctMC'] = 'gCt'
+    rename_dict['yMC'] = 'gRapidity'
+    df.rename(columns = rename_dict, inplace=True)
+    df['gMatter'] = df['pdg'] > 0
+
 parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
 parser.add_argument('-split', action='store_true')
 parser.add_argument('-train', action='store_true')
 parser.add_argument('-application', action='store_true')
-parser.add_argument('-n_iter', default=None)
+parser.add_argument('-aod', action='store_true')
 parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
@@ -48,8 +57,6 @@ PLOT_DIR = 'plots'
 OPTIMIZE = False
 OPTIMIZED = False
 TRAIN = args.train
-N_ITER = int(args.n_iter)
-print(N_ITER)
 # application
 
 APPLICATION = args.application
@@ -64,6 +71,8 @@ ROOT.gROOT.SetBatch()
 ##################################################################
 
 DATA_PATH = params['DATA_PATH']
+AOD = params['AOD']
+
 MERGE_SAMPLES = params['MERGE_SAMPLES']
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
@@ -90,24 +99,18 @@ if SPLIT:
     SPLIT_LIST = ['antimatter', 'matter']
 
 
-
-def create_dic_from_file(filename, cent_class, split):
-    tf1_dic = {}
-
-    tf1_dic['0_5'] = filename.Get('results/func_0_5')
-    tf1_dic['5_10'] = filename.Get('results/func_5_10')
-    tf1_dic['0_10'] = filename.Get('results/func_0_10')
-    tf1_dic['10_30'] = filename.Get('results/func_10_30')
-    tf1_dic['30_50'] = filename.Get('results/func_30_50')
-    tf1_dic['50_90'] = filename.Get('results/func_50_90')
-    return tf1_dic
-
-
-
 if TRAIN:
     score_eff_arrays_dict = dict()
-    signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
-    background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
+    if AOD:
+        signal_tree_handler = TreeHandler(MC_PATH, "HyperTree")
+        rename_mc_df_columns(signal_tree_handler._full_data_frame)
+        background_tree_handler = TreeHandler(DATA_PATH)
+        background_tree_handler.apply_preselections("m>3.91 or m<2.975")
+
+        
+    else:
+        signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
+        background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
     # make plot directory
     if not os.path.isdir(PLOT_DIR):
         os.mkdir(PLOT_DIR)
@@ -131,21 +134,19 @@ if TRAIN:
             if split == 'antimatter':
                 split_ineq_sign = '< 0.5'
 
-            if N_ITER>0:
-                pt_spectra_file = ROOT.TFile.Open(res_dir + '/pt_spectra.root')
-                TF1_DICT = create_dic_from_file(pt_spectra_file, cent_bins, "antimatter")
-                print(TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
-                hp.apply_pt_rejection(signal_tree_handler, TF1_DICT[f'{cent_bins[0]}_{cent_bins[1]}'])
-                pt_spectra_file.Close()
-            else:
-                rej_flag = np.ones(len(signal_tree_handler))
-                signal_tree_handler._full_data_frame['rej'] = rej_flag
-                print('Rejection not applied: TF1 dict not given')
+            bw_file = ROOT.TFile.Open('utils/He3_fits.root')
+            bw = bw_file.Get(f'BlastWave_{cent_bins[0]}_{cent_bins[1]}')
+            print(f'Applying rejection with He3 spectra ...{cent_bins[0]}_{cent_bins[1]}')
+            hp.apply_pt_rejection(signal_tree_handler, bw)
+            bw_file.Close()              
 
             root_file_presel_eff.cd()
 
             df_signal_cent = signal_tree_handler.apply_preselections(
                 f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
+            if AOD:
+                df_signal_cent.apply_preselections('isReconstructed==True')
+            
             df_generated_cent = signal_tree_handler.apply_preselections(
                 f'gMatter {split_ineq_sign} and rej>0 and abs(gRapidity)<0.5', inplace=False)
             print(len(df_signal_cent), len(df_generated_cent))
@@ -159,10 +160,12 @@ if TRAIN:
             print('****************** Start BDT trainings ***************')
             pt_bins_cent = PT_BINS_CENT[i_cent_bins]
             for pt_bins in pt_bins_cent:
-                print(
-                    f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0')
-                signal_tree_handler_pt = signal_tree_handler.apply_preselections(
-                    f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
+                print(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0')
+                signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
+                
+                if AOD:
+                    signal_tree_handler_pt.apply_preselections('isReconstructed==True')
+
                 background_tree_handler_pt = background_tree_handler.apply_preselections(
                     f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and {cent_bins[0]}<centrality<{cent_bins[1]}', inplace=False)
 

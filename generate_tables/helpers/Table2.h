@@ -18,7 +18,7 @@ using namespace ROOT::Math;
 class Table2
 {
 public:
-  Table2(std::string name, std::string title, bool isMC=false);
+  Table2(std::string name, std::string title, bool isMC = false);
   void Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl);
   void Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl);
   void Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyper, const RCollision &RColl);
@@ -61,6 +61,14 @@ private:
   float TOFnSigmaPi;
   float TPCmomHe3;
   float TPCsignalHe3;
+
+  float PxHe3;
+  float PyHe3;
+  float PzHe3;
+
+  float PxPi;
+  float PyPi;
+  float PzPi;
 };
 
 Table2::Table2(std::string name, std::string title, bool isMC = false)
@@ -104,7 +112,19 @@ Table2::Table2(std::string name, std::string title, bool isMC = false)
   tree->Branch("TOFnSigmaPi", &TOFnSigmaPi);
   tree->Branch("TPCmomHe3", &TPCmomHe3);
   tree->Branch("TPCsignalHe3", &TPCsignalHe3);
+
+  tree->Branch("PxHe3", &PxHe3);
+  tree->Branch("PyHe3", &PyHe3);
+  tree->Branch("PzHe3", &PzHe3);
+
+  tree->Branch("PxPi", &PxPi);
+  tree->Branch("PyPi", &PyPi);
+  tree->Branch("PzPi", &PzPi);
+
+
+
 };
+
 
 void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RCollision &RColl)
 {
@@ -135,6 +155,17 @@ void Table2::Fill(const RHyperTritonHe3pi &RHyper, const RCollision &RColl)
   double ePi = Hypote(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, AliPID::ParticleMass(AliPID::kPion));
   TLorentzVector he3Vector, piVector, hyperVector;
   he3Vector.SetPxPyPzE(RHyper.fPxHe3, RHyper.fPyHe3, RHyper.fPzHe3, eHe3);
+
+  PxHe3 = RHyper.fPxHe3;
+  PyHe3 = RHyper.fPyHe3;
+  PzHe3 = RHyper.fPzHe3;
+
+  PxPi = RHyper.fPxPi;
+  PyPi = RHyper.fPyPi;
+  PzPi = RHyper.fPzPi;
+
+
+
   piVector.SetPxPyPzE(RHyper.fPxPi, RHyper.fPyPi, RHyper.fPzPi, ePi);
   hyperVector = piVector + he3Vector;
   TVector3 v(RHyper.fDecayX, RHyper.fDecayY, RHyper.fDecayZ);
@@ -254,6 +285,16 @@ void Table2::Fill(const SHyperTritonHe3pi &SHyper, const RHyperTritonHe3pi &RHyp
   PseudoRapidityPion = piVector.PseudoRapidity();
   TPCsignalHe3 = RHyper.fTPCsignalHe3;
   TPCmomHe3 = RHyper.fTPCmomHe3;
+
+  PxHe3 = RHyper.fPxHe3;
+  PyHe3 = RHyper.fPyHe3;
+  PzHe3 = RHyper.fPzHe3;
+
+  PxPi = RHyper.fPxPi;
+  PyPi = RHyper.fPyPi;
+  PzPi = RHyper.fPzPi;
+
+
 
   tree->Fill();
 };
