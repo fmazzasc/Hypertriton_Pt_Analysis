@@ -18,7 +18,7 @@ import yaml
 from helpers import significance_error, expected_signal_pt
 
 SPLIT = True
-MAX_EFF = 0.9
+
 
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -58,7 +58,7 @@ if not os.path.isdir(res_dir):
 
 
 score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
-eff_array = np.arange(0.10, MAX_EFF, 0.01)
+
 presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
 analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
 
@@ -78,15 +78,15 @@ for split in SPLIT_LIST:
         evts = np.sum(counts_cent_range)
         print(f'Number of events: {evts}')
         # get preselection efficiency histogram
-        presel_eff_counts, presel_eff_edges = presel_eff_file[
-            f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-        print(presel_eff_counts, presel_eff_edges)
+        presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
         presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
 
         for pt_bins in pt_bins_cent:
 
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-            df_data = pd.read_parquet(f'df/{bin}')
+            df_data = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin}')
+
+            eff_array = score_eff_arrays_dict[bin][1]
 
             # plot directory
             if not os.path.isdir('plots/significance_scan'):
@@ -95,8 +95,8 @@ for split in SPLIT_LIST:
             # lists filled inside loop
             significance_list = []
             significance_err_list = []
-
-            for eff_score in zip(eff_array, score_eff_arrays_dict[bin]):
+            print('------------------------------------------------------------------------------')
+            for eff_score in zip(eff_array, score_eff_arrays_dict[bin][0]):
                 # if (ct_bins[0] > 0) and (eff_score[0] < 0.49):
                 #     continue
                 formatted_eff = "{:.2f}".format(eff_score[0])
@@ -136,9 +136,6 @@ for split in SPLIT_LIST:
                     presel_eff_bin_centers < pt_bins[1])
                 presel_eff = presel_eff_counts[presel_eff_map]
                 eff = presel_eff * eff_score[0]
-                print(eff_score)
-                print(presel_eff)
-
                 # compute expected signal
                 sig = expected_signal_pt(cent_bins, pt_bins, eff, cent_counts)
                 if not SPLIT:
@@ -153,6 +150,8 @@ for split in SPLIT_LIST:
                 yy_mass = norm.pdf(xx_mass, hyp_mass, sigma)*sig*bin_size
                 yy_offset = pol(xx_mass)  # plot polynomial
                 yy_mass = yy_mass+yy_offset
+
+                print("Signal: ", sig, ", Background: ", bkg)
 
                 # compute significance
                 significance_list.append(sig/np.sqrt(sig+bkg))
@@ -180,7 +179,6 @@ for split in SPLIT_LIST:
             significance_array = np.asarray(significance_list)
             significance_err_array = np.asarray(significance_err_list)
 
-            print(len(significance_array))
             significance_array = np.nan_to_num(significance_array*(eff_array_reduced))
             significance_err_array = np.nan_to_num(significance_err_array*(eff_array_reduced))
 
@@ -190,16 +188,13 @@ for split in SPLIT_LIST:
             up_limit = significance_array + significance_err_array
 
             # cut
-            print(significance_array)
             cut_eff_index = significance_array == np.nanmax(significance_array)
-            print(cut_eff_index)
             cut_eff = eff_array_reduced[cut_eff_index]
 
             fig = plt.figure()
             plt.plot(eff_array_reduced, significance_array, 'b', label='Expected Significance')
             plt.fill_between(eff_array_reduced, low_limit, up_limit,
                              facecolor='deepskyblue', label=r'$ \pm 1\sigma$', alpha=0.3)
-            print("cut eff: ", cut_eff)
             plt.vlines(cut_eff[0], 0, 20, colors='red', linestyles='dashed',
                        label=f'cut = {"{:.2f}".format(cut_eff[0])}')
 
@@ -209,9 +204,7 @@ for split in SPLIT_LIST:
 
             plt.xlabel("BDT Efficiency")
             plt.ylabel("Significance x BDT Efficiency")
-            plt.xlim(0.5, MAX_EFF-0.01)
-            # if ct_bins[0] == 0:
-            #     plt.xlim(0.1, MAX_EFF-0.01)
+            plt.xlim(0.5, 0.9-0.01)
             plt.ylim(0.3, up_limit.max()+0.3)
 
             plt.savefig(f'plots/significance_scan/{bin}.png')

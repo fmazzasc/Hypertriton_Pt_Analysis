@@ -89,6 +89,7 @@ for i_cent in range(len(cent_bins_MB)):
 
 # book histograms
 h_abs_radius = {}
+h_abs_xy = {}
 h_abs_ct = {}
 h_gen_radius = {}
 h_gen_ct = {}
@@ -99,6 +100,7 @@ h_rec_pt = {}
 
 for key in func.keys():
         for split in split_list:
+            h_abs_xy[f"{split}_" + key] = ROOT.TH2D(f"fAbsXY_{split}_" + key, "; x (cm); y (cm); Entries", 1000, 0, 1000, 1000, 0, 1000)
             h_abs_radius[f"{split}_" + key] = ROOT.TH1D(f"fAbsRadius_{split}_{cent_bins[0]}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
             h_abs_ct[f"{split}_" + key] = ROOT.TH1D(f"fAbsCt_{split}_" + key, ";#it{c}t (cm);Entries",2000, 1, 1000)
             h_gen_radius[f"{split}_" + key] = ROOT.TH1D(f"fGenRadius_{split}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
@@ -129,7 +131,7 @@ num_entries = len(np_he3["pt"])
 print_steps = num_entries*np.arange(0,1,0.01)
 
 
-for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
+for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt']):
 
     # if counter > 10000:
     #     break
@@ -150,8 +152,8 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
         #     print(absCt)
         #     key_counter += 1
         # rejection sampling to reweight pt
-        # if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
-        #     continue
+        if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
+            continue
         # sample decay ct and ckeck for absorption
 
         decCt = ROOT.gRandom.Exp(7.6)
@@ -170,6 +172,7 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
         h_gen_radius[f"{split}_" + key].Fill(dec_radius)
         h_gen_ct[f"{split}_" + key].Fill(decCt)
         h_gen_pt[f"{split}_" + key].Fill(he3[0])
+
         # print('gen: ', he3[0])
         if not (decCt > absCt):  # decCt < absCt
             h_rec_radius[f"{split}_" + key].Fill(dec_radius)

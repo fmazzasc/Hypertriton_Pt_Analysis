@@ -35,7 +35,7 @@ def apply_pt_rejection(df, pt_shape):
             rej_flag[ind] = True
     df['rej'] = rej_flag
 #######################################################################
-cent_class = [5, 10]
+cent_class = [0, 10]
 
 isAOD = False
 is2015 = False
@@ -107,8 +107,8 @@ if minimumBias:
 
 
 
-pt_bins = [[2, 3],[3,4],[4,4.5], [4.5,5], [5,6], [6,9]]
-# pt_bins = [[2,9]]
+# pt_bins = [[2, 3],[3,4],[4,4.5], [4.5,5], [5,6], [6,9]]
+pt_bins = [[2,9]]
 
 bw_index = 0
 if cent_class[0]==10 and len(pt_bins)==1:
@@ -149,6 +149,8 @@ if isAOD:
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
   
 else:
+    # df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5 and Matter==0')
+    # df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5 and gMatter==0')
     df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
 
@@ -195,8 +197,8 @@ for ind,pt_bin in enumerate(pt_bins):
                         fit_result = hp_std.fit_hist(selected_data_hist, cent_class=cent_class, pt_range=pt_bin, ct_range=[1,35])
                         bin_width = pt_bin[1] - pt_bin[0]
                         if len(pt_bins)>1:
-                            pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/2/n_ev/bin_width/absorption_corr)
-                            pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/2/n_ev/bin_width/absorption_corr)
+                            pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/2/bin_width/absorption_corr)
+                            pt_spectrum.SetBinError(ind + 1, fit_result[1]/eff/n_ev/2/bin_width/absorption_corr)
                             efficiency.SetBinContent(ind + 1, eff)
                         else:
                             pt_spectrum.SetBinContent(ind + 1, fit_result[0]/eff/n_ev/2/absorption_corr)
@@ -205,7 +207,7 @@ for ind,pt_bin in enumerate(pt_bins):
 
 
 pwg = AliPWGFunc()
-histo,Integral, integral_error, bw_fit = hp.bw_fit(pt_spectrum, bw, pwg, fit_range=[3,9])
+histo,Integral, integral_error, bw_fit = hp.bw_fit(pt_spectrum, bw, pwg, fit_range=[2,9])
 print("yield: ", Integral, ", error: ", integral_error)
 histo.SetTitle(";#it{p}_{T} (GeV/#it{c});1/N_{ev} d#it{N}/(dyd#it{p}_{T})")
 

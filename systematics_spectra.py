@@ -6,7 +6,7 @@ import helpers as hp
 import os
 import pickle
 import warnings
-
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,10 +16,17 @@ import uproot
 import yaml
 
 
+ROOT.gROOT.ProcessLine(".L utils/alipwgfunc/AliPWGFunc.cxx++")
+from ROOT import AliPWGFunc
+
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-config = 'config.yaml'
-with open(os.path.expandvars(config), 'r') as stream:
+parser = argparse.ArgumentParser(prog='syst', allow_abbrev=True)
+parser.add_argument('config', help='Path to the YAML configuration file')
+args = parser.parse_args()
+
+with open(os.path.expandvars(args.config), 'r') as stream:
     try:
         params = yaml.full_load(stream)
     except yaml.YAMLError as exc:
@@ -52,9 +59,7 @@ bw_file = ROOT.TFile('utils/BlastWaveFits.root')
 bw = bw_file.Get('BlastWave/BlastWave0')
 #####################################################################
 analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
-# cent_counts, cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()  ##does not work with uproot3 
-cent_counts = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].values ##does not work with uproot4
-cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].edges ##does not work with uproot4
+cent_counts, cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()
 
 
 
@@ -64,7 +69,7 @@ print("Total number of events: ", np.sum(cent_counts))
 
 eff_cut_dict = pickle.load(open(res_dir + "/file_eff_cut_dict", "rb"))
 presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
-absorption_correction_file = uproot.open("results/He3_abs.root")
+absorption_correction_file = uproot.open("utils/He3_abs_1.5.root")
 signal_extraction_file = ROOT.TFile.Open(res_dir + '/SignalExtraction.root')
 signal_extraction_up = uproot.open(res_dir + '/SignalExtraction.root')
 pt_spectra_file = ROOT.TFile.Open(res_dir + '/systematics.root', 'recreate')
@@ -92,14 +97,12 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         print("---------------------------")
         print(f'{i_split} -> {split}, cent: [{cent_bins[0]}, {cent_bins[1]}]')
         # get preselection efficiency and abs correction histograms
-        presel_eff_counts = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].values
-        presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].edges
+        presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()        
         presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
 
 
-        func = "BlastWave" if cent_bins[0]<1 else "BGBW"
-        absorption_counts = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].values
-        absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_{split}_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].edges
+        func = "BlastWave" if cent_bins==[0,10] else "BGBW"
+        absorption_counts, absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_antimatter_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].to_numpy()
         absorption_bin_centers = (absorption_edges[1:]+absorption_edges[:-1])/2
 
         if cent_bins[0]==0:
@@ -126,13 +129,16 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
                 eff_cut_increment = 0
                 eff_cut_sign = -1
                 signal_extraction_keys = signal_extraction_up[f"{bin}_{bkg_shape}"].keys()
-                while signal_extraction_keys.count(f"fInvMass_{formatted_eff_cut};1".encode())==0 and eff_cut_increment<20:
+                # print('eff cut: ', formatted_eff_cut)
+                if len(signal_extraction_keys)==0:
+                    continue
+                while signal_extraction_keys.count(f"fInvMass_{formatted_eff_cut};1")==0 and eff_cut_increment<0.20:
                     if eff_cut_sign == -1:
                         eff_cut_increment += 0.01
                     eff_cut_sign *= -1
                     formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin]+eff_cut_increment*eff_cut_sign)
 
-
+                # print('eff cut: ', formatted_eff_cut)
                 # random sample of cut (upper and lower limits from significance scan)
                 bin_range = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}_range'
                 eff_cut_range = eff_cut_dict[bin_range]/100 - 0.01
@@ -157,7 +163,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
 
                 presel_eff = presel_eff_counts[presel_eff_map]
                 absorption_corr = absorption_counts[absorption_map]
-
+                absorption_corr = absorption_corr if split=='antimatter' else (0.98/0.95)*absorption_corr
 
                 bdt_eff = float(formatted_eff_cut)
                 eff = presel_eff * eff_cut_dict[bin]
@@ -185,7 +191,8 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             h_corrected_yields[i_split].SetMarkerStyle(20)
             h_corrected_yields[i_split].SetMarkerSize(0.8)
 
-            _, integral,integral_error = hp.bw_fit(h_corrected_yields[i_split], bw)
+            pwg = AliPWGFunc()
+            _, integral,integral_error,_ = hp.bw_fit(h_corrected_yields[i_split], bw, pwg, [2,9])
 
             trial.Fill(integral)
 

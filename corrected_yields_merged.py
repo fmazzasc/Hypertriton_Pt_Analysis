@@ -14,58 +14,58 @@ import ROOT
 import uproot
 import yaml
 
-ROOT.gROOT.ProcessLine(".L utils/alipwgfunc/AliPWGFunc.cxx++")
-from ROOT import AliPWGFunc
-
-
-parser = argparse.ArgumentParser(prog='corrected_yields', allow_abbrev=True)
-parser.add_argument('config', help='Path to the YAML configuration file')
-args = parser.parse_args()
-
-with open(os.path.expandvars(args.config), 'r') as stream:
-    try:
-        params = yaml.full_load(stream)
-    except yaml.YAMLError as exc:
-        print(exc)
-
-ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
-PT_BINS_CENT = params['PT_BINS_CENT']
-CENTRALITY_LIST = params['CENTRALITY_LIST']
-RESULTS_SUBDIR = params['RESULTS_SUBDIR']
-KINT7 = params['KINT7']
-##################################################################
-
-
-res_dir = 'results' + RESULTS_SUBDIR
-if not os.path.isdir(res_dir):
-    os.mkdir(res_dir)
-
-# split matter/antimatter
-SPLIT_LIST = ['antimatter', 'matter']
 
 ROOT.gStyle.SetOptStat(0)
 # ROOT.gStyle.SetOptFit(0)
 ROOT.gROOT.SetBatch()
+
+ROOT.gROOT.ProcessLine(".L utils/alipwgfunc/AliPWGFunc.cxx++")
+from ROOT import AliPWGFunc
+
+PT_BINS_CENT = [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,4],[4,9]], [[2,9]]]
+CENTRALITY_LIST = [[0,10],[10,30], [30, 50], [50,90]]
+##################################################################
+
+res_dir_2015 = 'results/bins_offline_2018_KINT7'
+res_dir_2018 = 'results/bins_offline_2015'
+target_dir = 'results/bins_offline_merged'
+
+if not os.path.isdir(target_dir):
+    os.mkdir(target_dir)
+
+
+# split matter/antimatter
+SPLIT_LIST = ['antimatter', 'matter']
+
+# bw file
 #####################################################################
 bw_file = ROOT.TFile('utils/BlastWaveFits.root')
 
+## centrality
 #####################################################################
-analysis_results_file = uproot.open(os.path.expandvars(ANALYSIS_RESULTS_PATH))
-cent_counts, cent_edges = analysis_results_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()  ##does not wprk with uproot3 
-
-
-
+analysis_results_2015 = uproot.open("/data/fmazzasc/PbPb_2body/2015/AnalysisResults_15o.root")
+analysis_results_2018 = uproot.open("/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root")
+cent_counts, cent_edges = analysis_results_2015["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()
 cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
+
+## presel eff
+#####################################################################
+presel_eff_file_2015 = uproot.open(res_dir_2015 + '/PreselEff.root')
+presel_eff_file_2018 = uproot.open(res_dir_2018 + '/PreselEff.root')
+
+
+
+
 
 print("Total number of events: ", np.sum(cent_counts))
 
-eff_cut_dict = pickle.load(open(res_dir + "/file_eff_cut_dict", "rb"))
-presel_eff_file = uproot.open(res_dir + '/PreselEff.root')
-signal_extraction_file = ROOT.TFile.Open(res_dir + '/SignalExtraction.root')
-signal_extraction_up = uproot.open(res_dir + '/SignalExtraction.root')
-absorption_correction_file = uproot.open(f"utils/He3_abs_1.5.root")
+eff_cut_dict = pickle.load(open(res_dir_2015 + "/file_eff_cut_dict", "rb"))
 
-corrected_yields_file = ROOT.TFile.Open(res_dir + '/corrected_yields.root', 'recreate')
+
+signal_extraction_file = ROOT.TFile.Open(target_dir + '/SignalExtraction.root')
+signal_extraction_up = uproot.open(target_dir + '/SignalExtraction.root')
+absorption_correction_file = uproot.open(f"utils/He3_abs_1.5.root")
+corrected_yields_file = ROOT.TFile.Open(target_dir + '/corrected_yields.root', 'recreate')
 bw_list = []
 
 for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
@@ -76,10 +76,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
     cent_range_map = np.logical_and(cent_bin_centers > cent_bins[0], cent_bin_centers < cent_bins[1])
     counts_cent_range = cent_counts[cent_range_map]
     evts = np.sum(counts_cent_range)
-
-    if(cent_bins==[10,30] or cent_bins==[50,90]) and KINT7:
-        evts = hp.get_number_of_MB_ev(cent_bins, analysis_results_file)
-
+    evts += hp.get_number_of_MB_ev(cent_bins, analysis_results_2018)  #2018 Events KINT7
     print("********************************************************")
     print(f'Number of events [{cent_bins[0]}, {cent_bins[1]}] : {evts}')
 
@@ -90,13 +87,10 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         print("---------------------------")
         print(f'{i_split} -> {split}')
         # get preselection efficiency
-        if split=='all':
-            presel_eff_counts_mat, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_matter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-            presel_eff_counts_antimat, _ = presel_eff_file[f'fPreselEff_vs_pt_antimatter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-            presel_eff_counts = 0.5*(presel_eff_counts_mat + presel_eff_counts_antimat)        
+        presel_eff_counts_2015, presel_eff_edges = presel_eff_file_2015[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+        presel_eff_counts_2018, _ = presel_eff_file_2018[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+        presel_eff_counts = 0.5*(presel_eff_counts_2015 + presel_eff_counts_2018)
 
-        else:
-            presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()        
         # get absorption correction
         func = "BlastWave" if cent_bins==[0,10] else "BGBW"
         absorption_counts, absorption_edges = absorption_correction_file[f'{cent_bins[0]}_{cent_bins[1]}'][f'fEffPt_antimatter_cent_{cent_bins[0]}_{cent_bins[1]}_func_{func};1'].to_numpy()

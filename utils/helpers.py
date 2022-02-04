@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from numbers import Integral
 import os
 import pickle
 import warnings
@@ -120,19 +121,42 @@ def bw_fit(histo, bw, pwg, fit_range=[2,9]):
     params = bw.GetParameters()
     print("BW: ", bw)
     bw_fit = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])   
-    bw_fit.SetParLimits(0, 2.989,2.992)
-    bw_fit.SetParLimits(1, 0, 2)
-    bw_fit.SetParLimits(2, 0, 2)
-    bw_fit.SetParLimits(3, 0, 2)
-    bw_fit.SetParLimits(4, 0, 5e3)
+    bw_fit.FixParameter(0,2.991)
+    bw_fit.SetParLimits(1, 0, 5)
+    bw_fit.SetParLimits(2, 0, 5)
+    bw_fit.SetParLimits(3, 0, 5)
+    bw_fit.SetParLimits(4, 0, 1e9)
 
-    fit_result = histo.Fit(bw_fit, "SMI", "", fit_range[0], fit_range[1])
+    fit_result = histo.Fit(bw_fit, "SI", "", fit_range[0], fit_range[1])
     cov_matrix = fit_result.GetCovarianceMatrix()
-    integral = bw_fit.Integral(0,10, 1e5)
-    integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray())
+    integral = bw_fit.Integral(0,10, 1e-4)
+    integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray(), 1e-1)
 
     return histo, integral, integral_error, bw_fit
-    
+
+
+
+def he3_bw_fit(histo, bw, pwg, fit_range=[2,9]):
+    params = bw.GetParameters()
+    print("BW: ", bw)
+    bw_fit = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])   
+    bw_fit.FixParameter(0, params[0])
+    bw_fit.FixParameter(1, params[1])
+    bw_fit.FixParameter(2, params[2])
+    bw_fit.FixParameter(3, params[3])
+    bw_fit.SetParLimits(4, params[4]/20, params[4]/9)
+
+    # bw_fit.SetParLimits(4, 0, 1e3)
+
+    fit_result = histo.Fit(bw_fit, "SI", "", fit_range[0], fit_range[1])
+    cov_matrix = fit_result.GetCovarianceMatrix()
+    integral = bw_fit.Integral(0,10, 1e-4)
+    integral_error = bw_fit.IntegralError(0,10, fit_result.GetParams(), cov_matrix.GetMatrixArray(), 1e-1)
+    # integral = 1
+    # integral_error = 1
+
+
+    return histo, integral, integral_error, bw_fit
 
 
 def mtexpo_fit(histo):

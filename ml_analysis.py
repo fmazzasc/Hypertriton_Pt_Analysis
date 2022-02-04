@@ -73,18 +73,19 @@ ROOT.gROOT.SetBatch()
 DATA_PATH = params['DATA_PATH']
 AOD = params['AOD']
 
-MERGE_SAMPLES = params['MERGE_SAMPLES']
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
 CT_BINS = params['CT_BINS']
 PT_BINS_CENT = params['PT_BINS_CENT']
-PT_BINS = params['PT_BINS']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
 TRAINING_COLUMNS_LIST = params['TRAINING_COLUMNS']
 RANDOM_STATE = params['RANDOM_STATE']
 HYPERPARAMS = params['HYPERPARAMS']
 HYPERPARAMS_RANGES = params['HYPERPARAMS_RANGES']
 RESULTS_SUBDIR = params['RESULTS_SUBDIR']
+
+useTOF = params['USETOF']
+KINT7 = params['KINT7']
 
 
 res_dir = 'results' + RESULTS_SUBDIR
@@ -104,13 +105,15 @@ if TRAIN:
     if AOD:
         signal_tree_handler = TreeHandler(MC_PATH, "HyperTree")
         rename_mc_df_columns(signal_tree_handler._full_data_frame)
-        background_tree_handler = TreeHandler(DATA_PATH)
-        background_tree_handler.apply_preselections("m>3.91 or m<2.975")
-
-        
     else:
         signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
+
+    if BKG_PATH=='':
+        background_tree_handler = TreeHandler(DATA_PATH) if DATA_PATH[-1]!='t' else TreeHandler(DATA_PATH, 'DataTable')
+        background_tree_handler.apply_preselections("m>3.91 or m<2.975")
+    else:
         background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
+
     # make plot directory
     if not os.path.isdir(PLOT_DIR):
         os.mkdir(PLOT_DIR)
@@ -123,6 +126,7 @@ if TRAIN:
 
     for i_cent_bins in range(len(CENTRALITY_LIST)):
         cent_bins = CENTRALITY_LIST[i_cent_bins]
+
         print('##########################################################################')
         print(f'CENTRALITY BIN: {cent_bins[0]}-{cent_bins[1]}\n')
         print('****************** Reweighting MC and computing Efficiency ***************')
@@ -141,19 +145,18 @@ if TRAIN:
             bw_file.Close()              
 
             root_file_presel_eff.cd()
+            if(cent_bins[0]==0 and useTOF):
+                df_signal_cent = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35 and -4<TOFnSigmaHe3<4', inplace=False)
+            else:
+                df_signal_cent = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
 
-            df_signal_cent = signal_tree_handler.apply_preselections(
-                f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
             if AOD:
                 df_signal_cent.apply_preselections('isReconstructed==True')
-            
-            df_generated_cent = signal_tree_handler.apply_preselections(
-                f'gMatter {split_ineq_sign} and rej>0 and abs(gRapidity)<0.5', inplace=False)
+
+            df_generated_cent = signal_tree_handler.apply_preselections(f'gMatter {split_ineq_sign} and rej>0 and abs(gRapidity)<0.5', inplace=False)
             print(len(df_signal_cent), len(df_generated_cent))
-            pt_bins_cent = np.sort(pd.unique(
-                [item for sublist in PT_BINS_CENT[i_cent_bins] for item in sublist]))  # flattening list
-            hist_eff_pt = hp.presel_eff_hist(
-                [df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
+            pt_bins_cent = np.sort(pd.unique([item for sublist in PT_BINS_CENT[i_cent_bins] for item in sublist]))  # flattening list
+            hist_eff_pt = hp.presel_eff_hist([df_signal_cent, df_generated_cent], 'pt', split, cent_bins, pt_bins_cent)
             hist_eff_pt.Write()
             del df_generated_cent, df_signal_cent
 
@@ -161,13 +164,17 @@ if TRAIN:
             pt_bins_cent = PT_BINS_CENT[i_cent_bins]
             for pt_bins in pt_bins_cent:
                 print(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0')
-                signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
+
+                if(cent_bins[0]==0 and useTOF):
+                    signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0 and -4<TOFnSigmaHe3<4', inplace=False)
+                else:
+                    signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
+
                 
                 if AOD:
                     signal_tree_handler_pt.apply_preselections('isReconstructed==True')
 
-                background_tree_handler_pt = background_tree_handler.apply_preselections(
-                    f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and {cent_bins[0]}<centrality<{cent_bins[1]}', inplace=False)
+                background_tree_handler_pt = background_tree_handler.apply_preselections(f'ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and {cent_bins[0]}<centrality<{cent_bins[1]}', inplace=False)
 
                 print('Number of signal candidates: ',
                         len(signal_tree_handler_pt))
@@ -181,8 +188,7 @@ if TRAIN:
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
                 print("BIN RESULTS: ", bin_results)
 
-                train_test_data = train_test_generator([signal_tree_handler_pt, background_tree_handler_pt], [
-                                                        1, 0], test_size=0.5, random_state=RANDOM_STATE)
+                train_test_data = train_test_generator([signal_tree_handler_pt, background_tree_handler_pt], [1, 0], test_size=0.5, random_state=RANDOM_STATE)
 
                 ##############################################################
                 # TRAINING AND TEST SET PREPARATION
@@ -192,7 +198,7 @@ if TRAIN:
                 model_clf = xgb.XGBClassifier(use_label_encoder=False)
                 model_hdl = ModelHandler(model_clf, TRAINING_COLUMNS_LIST)
                 model_hdl.set_model_params(HYPERPARAMS)
-                model_hdl.set_model_params({"n_jobs": 30})
+                model_hdl.set_model_params({"n_jobs": 60})
                 # hyperparameters optimization and model training
 
                 if not os.path.isdir(model_dir):
@@ -209,41 +215,34 @@ if TRAIN:
                         f'{model_dir}/{bin_results}_optimized_trained')
                 model_hdl.dump_model_handler(model_file_name)
 
-                signal_tree_handler_cent = signal_tree_handler_pt.apply_preselections(
-                    f'Matter {split_ineq_sign}', inplace=False)
-                background_tree_handler_cent = background_tree_handler_pt.apply_preselections(
-                    f'Matter {split_ineq_sign}', inplace=False)
-
-                train_test_data_cent = train_test_generator([signal_tree_handler_cent, background_tree_handler_cent], [
-                                                            1, 0], test_size=0.5, random_state=RANDOM_STATE)
-
-                # get predictions for training and test sets
-                test_y_score = model_hdl.predict(train_test_data_cent[2])
-                train_y_score = model_hdl.predict(train_test_data_cent[0])
+                # get predictions for training and test sets in a given centrality
+                centrality_map = np.logical_and(train_test_data[2]['centrality']>cent_bins[0], train_test_data[2]['centrality']<cent_bins[1])
+                test_y_score = model_hdl.predict(train_test_data[2])
 
                 # get scores corresponding to BDT efficiencies using test set
                 eff_array = np.arange(0.10, MAX_EFF, 0.01)
                 score_array = analysis_utils.score_from_efficiency_array(
-                    train_test_data_cent[3], test_y_score, efficiency_selected=eff_array, keep_lower=False)
-                score_eff_arrays_dict[bin_results] = score_array
+                    train_test_data[3][centrality_map], test_y_score[centrality_map], efficiency_selected=eff_array, keep_lower=False)
+                score_eff_arrays_dict[bin_results] = [score_array, eff_array]
 
-                    # write test set data frame
-                train_test_data_cent[2]['model_output'] = test_y_score
-                mc_data_cent = train_test_data_cent[2][train_test_data_cent[3] > 0.5]
-                mc_data_cent.to_parquet(
-                    f'df/mc_{bin_results}', compression='gzip')
-
+                train_test_data[2]['model_output'] = test_y_score
+                mc_data_cent = train_test_data[2][train_test_data[3] > 0.5]
+                mc_data_cent.to_parquet(f'df{RESULTS_SUBDIR}/mc_{bin_results}', compression='gzip')
                 # save roc-auc
-                del train_test_data_cent
+                del train_test_data
                     ##############################################################
 
     pickle.dump(score_eff_arrays_dict, open(
         res_dir + "/file_score_eff_dict", "wb"))
 
 # apply model to data
-if APPLICATION:
+if APPLICATION:    
     if not os.path.isdir('df'):
         os.mkdir('df')
+    
+    if not os.path.isdir(f'df{RESULTS_SUBDIR}'):
+        os.mkdir(f'df{RESULTS_SUBDIR}')
+
     score_eff_arrays_dict = pickle.load(
         open(res_dir + "/file_score_eff_dict", "rb"))
 
@@ -251,13 +250,7 @@ if APPLICATION:
         if DATA_PATH[-1]!='t':
             df_data = pd.read_parquet(DATA_PATH)
         else:            
-            df_data = uproot.open(os.path.expandvars(DATA_PATH))[
-                'DataTable'].arrays(library="pd")
-
-        if MERGE_SAMPLES:
-            df_2015 = uproot.open(os.path.expandvars(
-                '/data/fmazzasc/PbPb_2body/DataTable_15o.root'))['DataTable'].arrays(library="pd")
-            df_data = pd.concat([df_data, df_2015])
+            df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
 
         split_ineq_sign = '> -0.1'
         if SPLIT:
@@ -270,14 +263,14 @@ if APPLICATION:
                 cent_bins = CENTRALITY_LIST[i_cent_bins]
 
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                if cent_bins[0]==0 and useTOF:
+                    df_data_cent = df_data.query(f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35 and -4<TOFnSigmaHe3<4')
+                else:
+                    df_data_cent = df_data.query(f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
-                df_data_cent = df_data.query(
-                    f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
-
-                if cent_bins[0] == 10 or cent_bins[0] == 50:
+                if cent_bins[0] == 10 or cent_bins[0] == 50 or KINT7:
                     print('selecting kINT7..')
-                    df_data_cent = df_data_cent.query(
-                        'trigger%2!=0 and trigger!=0')
+                    df_data_cent = df_data_cent.query('trigger%2!=0')
 
                 model_hdl = ModelHandler()
 
@@ -294,6 +287,6 @@ if APPLICATION:
                 df_data_cent['model_output'] = data_y_score
 
                 df_data_cent = df_data_cent.query(
-                    f'model_output > {score_eff_arrays_dict[bin_results][len(eff_array)-1]}')
+                    f'model_output > {score_eff_arrays_dict[bin_results][0][-1]}')
                 df_data_cent.to_parquet(
-                    f'df/{bin_results}', compression='gzip')
+                    f'df{RESULTS_SUBDIR}/{bin_results}', compression='gzip')

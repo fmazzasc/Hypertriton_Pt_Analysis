@@ -23,14 +23,10 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 ROOT.gROOT.SetBatch()
 
 parser = argparse.ArgumentParser(prog='signal_extraction', allow_abbrev=True)
-parser.add_argument('-bkgExpo', action='store_true')
-parser.add_argument('-bkgPol2', action='store_true')
 parser.add_argument('-gaus_signal', action='store_true')
-parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
-BKG_EXPO = args.bkgExpo
-BKG_POL2 =  args.bkgPol2
+
 gaus_signal = args.gaus_signal
 
 ##################################################################
@@ -38,58 +34,41 @@ gaus_signal = args.gaus_signal
 ##################################################################
 
 
-with open(os.path.expandvars(args.config), 'r') as stream:
-    try:
-        params = yaml.full_load(stream)
-    except yaml.YAMLError as exc:
-        print(exc)
-
-DATA_PATH = params['DATA_PATH']
-PT_BINS_CENT = params['PT_BINS_CENT']
-CENTRALITY_LIST = params['CENTRALITY_LIST']
-RANDOM_STATE = params['RANDOM_STATE']
+PT_BINS_CENT = [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,4],[4,9]], [[2,9]]]
+CENTRALITY_LIST = [[0,10],[10,30], [30, 50], [50,90]]
 ##################################################################
-RESULTS_SUBDIR = params['RESULTS_SUBDIR']
-res_dir = 'results' + RESULTS_SUBDIR
+
+res_dir_2015 = 'results/bins_offline_2018_KINT7'
+res_dir_2018 = 'results/bins_offline_2015'
+target_dir = 'results/bins_offline_merged'
+
+if not os.path.isdir(target_dir):
+    os.mkdir(target_dir)
+
+root_file_signal_extraction = ROOT.TFile(target_dir + "/SignalExtraction.root", "recreate")
+
+
 # split matter/antimatter
-SPLIT_LIST = ['all']
-if SPLIT:
-    SPLIT_LIST = ['antimatter', 'matter', 'all']
-
+SPLIT_LIST = ['antimatter', 'matter']
 bkg_shape = 'pol2'
-if BKG_EXPO:
-    bkg_shape = 'expo'
-if BKG_POL2:
-    bkg_shape = 'pol2'
 
 
-score_eff_arrays_dict = pickle.load(open(res_dir + "/file_score_eff_dict", "rb"))
+score_eff_arrays_dict_2015 = pickle.load(open(res_dir_2015 + "/file_score_eff_dict", "rb"))
+score_eff_arrays_dict_2018 = pickle.load(open(res_dir_2018 + "/file_score_eff_dict", "rb"))
 
-root_file_signal_extraction = ROOT.TFile(res_dir + "/SignalExtraction.root", "recreate")
 for split in SPLIT_LIST:
     for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         cent_bins = CENTRALITY_LIST[i_cent_bins]
         for pt_bins in pt_bins_cent:
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
     
-            if split=="all":
-                score_eff_arrays_dict[bin] = []
-                bin_mat = f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-                bin_antimat = f'antimatter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-                df_data_mat = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin_mat}')
-                df_data_antimat = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin_antimat}')
-                df_signal_mat = pd.read_parquet(f'df{RESULTS_SUBDIR}/mc_{bin_mat}')
-                df_signal_antimat = pd.read_parquet(f'df{RESULTS_SUBDIR}/mc_{bin_antimat}')
-                df_data = pd.concat([df_data_mat, df_data_antimat])
-                df_signal = pd.concat([df_signal_mat, df_signal_antimat])
-                del df_data_antimat,df_data_mat,df_signal_antimat,df_signal_mat
-                score_eff_arrays_dict[bin].append(0.5*(score_eff_arrays_dict[bin_mat][0] + score_eff_arrays_dict[bin_antimat][0]))
-                score_eff_arrays_dict[bin].append(score_eff_arrays_dict[bin_mat][1])
 
-            
-            else:
-                df_data = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin}')
-                df_signal = pd.read_parquet(f'df{RESULTS_SUBDIR}/mc_{bin}')
+            df_data_2018 = pd.read_parquet(f'df/bins_offline_2018_KINT7/{bin}')
+            df_data_2015 = pd.read_parquet(f'df/bins_offline_2015/{bin}')
+
+            df_signal = pd.read_parquet(f'df/bins_offline_2018_KINT7/mc_{bin}')
+
+
             # ROOT.Math.MinimizerOptions.SetDefaultTolerance(1e-2)
             root_file_signal_extraction.mkdir(f'{bin}_{bkg_shape}')
 
@@ -99,14 +78,16 @@ for split in SPLIT_LIST:
             # significance histogram
             h_significance = ROOT.TH1D("fSignificance", "fSignificance", 101, -0.005, 1.005)
 
-            for eff_score in zip(score_eff_arrays_dict[bin][1], score_eff_arrays_dict[bin][0]):
-                if eff_score[0] < 0.20:
+            for eff_2018, eff_2015, score_2018, score_2015 in zip(score_eff_arrays_dict_2018[bin][1],  score_eff_arrays_dict_2015[bin][1], score_eff_arrays_dict_2018[bin][0], score_eff_arrays_dict_2015[bin][0]):
+                eff = eff_2018
+                if eff < 0.20:
                     continue
-                formatted_eff = "{:.2f}".format(eff_score[0])
-                print(f'processing {bin}: eff = {eff_score[0]:.2f}, score = {eff_score[1]:.2f}...')
+                formatted_eff = "{:.2f}".format(eff)
+                print(f'processing {bin}: eff 2018 = {eff_2018:.2f}, eff 2015 = {eff_2015:.2f}, score 2018 = {score_2018:.2f}, , score 2015 = {score_2015:.2f} ...')
 
-                df_data_sel = df_data.query(f'model_output > {eff_score[1]}')
-                df_signal_sel = df_signal.query(f'model_output > {eff_score[1]}')
+                df_data_sel = pd.concat([df_data_2018.query(f'model_output > {score_2018}'), df_data_2015.query(f'model_output > {score_2015}')]) 
+                df_signal_sel = df_signal.query(f'model_output > {eff}')
+
                 if len(df_signal_sel) > 1000:
                     print('Sampling 1000 events...')
                     df_signal_sel = df_signal_sel.sample(1000)
@@ -141,10 +122,9 @@ for split in SPLIT_LIST:
 
                 if bkg_shape=="pol1":
                     roo_bkg = ROOT.RooPolynomial('background', 'background', roo_m, ROOT.RooArgList(roo_slope))
-                
+
                 elif bkg_shape=="pol2":
                     roo_bkg = ROOT.RooPolynomial('background', 'background', roo_m, ROOT.RooArgList(roo_slope, roo_slope2))
-
                 else:
                     roo_bkg = ROOT.RooExponential('background', 'background', roo_m, roo_slope)
 
@@ -254,7 +234,7 @@ for split in SPLIT_LIST:
                                 os.mkdir('plots/signal_extraction')
                             if not os.path.isdir(f'plots/signal_extraction/{bin}_{bkg_shape}'):
                                 os.mkdir(f'plots/signal_extraction/{bin}_{bkg_shape}')
-                            canv.Print(f'plots/signal_extraction/{bin}_{bkg_shape}/{eff_score[0]:.2f}_{bin}.png')
+                            canv.Print(f'plots/signal_extraction/{bin}_{bkg_shape}/{formatted_eff}_{bin}.png')
 
                             # plot kde and mc
                             frame = roo_m.frame(2.96, 3.025, 130)

@@ -21,14 +21,14 @@ void GenerateTableFromMC()
 {
   gRandom->SetSeed(1995);
 
-  string inFileName = "HyperTritonTree_nocuts_MC.root";
-  string inFileArg = "/data/fmazzasc/PbPb_2body/" + inFileName;
+  string inFileName = "HyperTritonTree_20g7.root";
+  string inFileArg = "/data/fmazzasc/PbPb_2body/2018/mc/" + inFileName;
 
-  string outFileName = "SignalTable_20g7_no_cuts_compl.root";
+  string outFileName = "SignalTable_20g7.root";
 
   string bwFileName;
   int cent_num;
-  string outFileArg = "/data/fmazzasc/PbPb_2body/" + outFileName;
+  string outFileArg = "/data/fmazzasc/PbPb_2body/2018/mc/" + outFileName;
 
   TFile *inFile = new TFile(inFileArg.data(), "READ");
   TTreeReader fReader("_default/fTreeV0", inFile);

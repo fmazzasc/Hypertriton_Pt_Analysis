@@ -1,26 +1,25 @@
-ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/old_stuff/AnalysisResults_18.root"
-DATA_PATH: "/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root"
-MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root"
-LS_BACKGROUND_PATH: "/data/fmazzasc/PbPb_2body/DataTable_18qr_pass3_LS.root"
-RESULTS_SUBDIR: "/bins_offline_2018_old"
+ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/2015/AnalysisResults_15o.root"
+DATA_PATH: "/data/fmazzasc/PbPb_2body/2015/DataTable_15o.root"
+MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/2015/SignalTable_16h7abc_flat_pt.root"
+LS_BACKGROUND_PATH: ""
+RESULTS_SUBDIR: "/bins_offline_2015"
 
 
 CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
-PT_BINS_CENT: [[[2, 3], [3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3], [3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3], [3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
-# PT_BINS_CENT: [[[2,9]], [[2,9]], [[2,9]], [[2,9]]]
+PT_BINS_CENT: [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 4], [4, 9]], [[2,9]]]
+CENTRALITY_LIST:  [[0,10],[10,30], [30, 50], [50,90]]
 
-PT_BINS: [[2, 3],[3,4],[4,5],[5,7], [7,9]]
-CENTRALITY_LIST:  [[0,5], [5,10], [0, 10],  [10,30], [30, 50], [50, 90]]
-
-MERGE_SAMPLES: True
-KINT7: True
+AOD: False
+KINT7: False
+USETOF: False
 
 
 RANDOM_STATE: 42
+
 HYPERPARAMS:
-  max_depth: 5
+  max_depth: 13
   learning_rate: 0.0982
-  n_estimators: 381
+  n_estimators: 181
   gamma: 0.4467
   min_child_weight: 5.75
   subsample: 0.74
