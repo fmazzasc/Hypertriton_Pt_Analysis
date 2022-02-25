@@ -41,7 +41,7 @@ if not os.path.isdir(res_dir):
     os.mkdir(res_dir)
 
 # split matter/antimatter
-SPLIT_LIST = ['antimatter', 'matter']
+SPLIT_LIST = ['antimatter', 'matter', 'all']
 
 ROOT.gStyle.SetOptStat(0)
 # ROOT.gStyle.SetOptFit(0)
@@ -77,7 +77,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
     counts_cent_range = cent_counts[cent_range_map]
     evts = np.sum(counts_cent_range)
 
-    if(cent_bins==[10,30] or cent_bins==[50,90]) and KINT7:
+    if KINT7:
         evts = hp.get_number_of_MB_ev(cent_bins, analysis_results_file)
 
     print("********************************************************")
@@ -147,6 +147,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             if len(absorption_corr)>1:
                 absorption_corr = np.mean(absorption_corr)
             absorption_corr = absorption_corr if split=='antimatter' else (0.98/0.95)*absorption_corr
+            print(absorption_corr)
             # absorption_corr = 1
             bdt_eff = float(formatted_eff_cut)
             eff = presel_eff * eff_cut_dict[bin]
@@ -159,7 +160,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             if i_split==0:
                 h_corrected_ratio.SetBinContent(pt_bin_index, raw_yield/eff[0]/absorption_corr)
                 h_corrected_ratio.SetBinError(pt_bin_index, raw_yield_error/eff[0]/absorption_corr)
-            else:
+            elif i_split==1:
                 bin_content = h_corrected_ratio.GetBinContent(pt_bin_index)
                 bin_error = h_corrected_ratio.GetBinError(pt_bin_index)
                 ratio_error = np.sqrt((bin_error/bin_content)**2 + (raw_yield_error/raw_yield)**2)
@@ -186,11 +187,5 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         h_corrected_yields[i_split].Write()
      
     h_corrected_ratio.Write()
-
-
-
-
-
-
 
 corrected_yields_file.Close()

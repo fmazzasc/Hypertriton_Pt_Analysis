@@ -11,6 +11,9 @@ CENTRALITY_LIST:  [[0,10],[10,30], [30, 50], [50,90]]
 
 AOD: False
 KINT7: False
+MAX_EFF: 0.95
+
+TRIGGERED: False
 USETOF: False
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 sys.path.append('utils')
+import helpers as hp
 import os
 import pickle
 import warnings
@@ -16,6 +17,9 @@ import yaml
 
 
 from helpers import significance_error, expected_signal_pt
+
+import matplotlib as mpl
+mpl.use('Agg')
 
 SPLIT = True
 
@@ -41,12 +45,14 @@ ANALYSIS_RESULTS_PATH = params['ANALYSIS_RESULTS_PATH']
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
 RANDOM_STATE = params['RANDOM_STATE']
+KINT7 = params['KINT7']
+
 ##################################################################
 
 # split matter/antimatter
 SPLIT_LIST = ['all']
 if SPLIT:
-    SPLIT_LIST = ['antimatter', 'matter']
+    SPLIT_LIST = ['matter', 'antimatter','all']
 
 
 
@@ -76,15 +82,39 @@ for split in SPLIT_LIST:
         cent_range_map = np.logical_and(cent_bin_centers > cent_bins[0], cent_bin_centers < cent_bins[1])
         counts_cent_range = cent_counts[cent_range_map]
         evts = np.sum(counts_cent_range)
+        evts_MB = evts
+        if(KINT7):
+            evts_MB = hp.get_number_of_MB_ev(cent_bins, analysis_results_file)
         print(f'Number of events: {evts}')
         # get preselection efficiency histogram
-        presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-        presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
+        if split=='all':
+            presel_eff_counts_mat, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_matter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_antimat, _ = presel_eff_file[f'fPreselEff_vs_pt_antimatter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts = 0.5*(presel_eff_counts_mat + presel_eff_counts_antimat)        
+        else:
+            presel_eff_counts, presel_eff_edges = presel_eff_file[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
 
+        
+        presel_eff_bin_centers = (presel_eff_edges[1:]+presel_eff_edges[:-1])/2
+    
         for pt_bins in pt_bins_cent:
 
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-            df_data = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin}')
+            if split=="all":
+                score_eff_arrays_dict[bin] = []
+                bin_mat = f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                bin_antimat = f'antimatter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                df_data_mat = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin_mat}')
+                df_data_antimat = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin_antimat}')
+                df_data = pd.concat([df_data_mat, df_data_antimat])
+                del df_data_antimat,df_data_mat
+                score_eff_arrays_dict[bin].append(0.5*(score_eff_arrays_dict[bin_mat][0] + score_eff_arrays_dict[bin_antimat][0]))
+                score_eff_arrays_dict[bin].append(score_eff_arrays_dict[bin_mat][1])
+                for eff,score_m,score_a in zip(score_eff_arrays_dict[bin_mat][1], score_eff_arrays_dict[bin_mat][0], score_eff_arrays_dict[bin_antimat][0]):
+                    print("Eff: ", eff, 'Score Matter: ', score_m, 'Score Antimatter: ', score_a)
+            
+            else:
+                df_data = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin}')
 
             eff_array = score_eff_arrays_dict[bin][1]
 
@@ -137,8 +167,8 @@ for split in SPLIT_LIST:
                 presel_eff = presel_eff_counts[presel_eff_map]
                 eff = presel_eff * eff_score[0]
                 # compute expected signal
-                sig = expected_signal_pt(cent_bins, pt_bins, eff, cent_counts)
-                if not SPLIT:
+                sig = expected_signal_pt(cent_bins, pt_bins, eff, cent_counts)*(evts_MB/evts)
+                if SPLIT=='all':
                     sig *= 2
                 mass_bins = bin_centers[mass_map]
                 mass_counts = norm.pdf(mass_bins, hyp_mass, sigma)
@@ -161,6 +191,7 @@ for split in SPLIT_LIST:
                 if not os.path.isdir(f'plots/significance_scan/{bin}'):
                     os.mkdir(f'plots/significance_scan/{bin}')
                 fig = plt.figure()
+
                 plt.errorbar(side_bins, side_counts, side_errors, fmt='o', label='Data', color='blue', ecolor='black')
                 plt.errorbar(mass_bins, mass_counts, np.sqrt(mass_counts), fmt='o', label='Pseudodata', color='red', ecolor='black')
                 plt.plot(xx_side, yy_side, label='Background fit', color='green')
@@ -173,9 +204,8 @@ for split in SPLIT_LIST:
                 plt.savefig(f'plots/significance_scan/{bin}/{formatted_eff}_{bin}.png')
                 plt.close('all')
 
+
             eff_array_reduced = eff_array
-            # if (ct_bins[0] == 0):
-            #     eff_array_reduced = eff_array
             significance_array = np.asarray(significance_list)
             significance_err_array = np.asarray(significance_err_list)
 

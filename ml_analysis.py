@@ -50,7 +50,6 @@ with open(os.path.expandvars(args.config), 'r') as stream:
 ##################################
 
 SPLIT = args.split
-MAX_EFF = 0.9
 
 # training
 PLOT_DIR = 'plots'
@@ -84,8 +83,12 @@ HYPERPARAMS = params['HYPERPARAMS']
 HYPERPARAMS_RANGES = params['HYPERPARAMS_RANGES']
 RESULTS_SUBDIR = params['RESULTS_SUBDIR']
 
-useTOF = params['USETOF']
+USETOF = params['USETOF']
 KINT7 = params['KINT7']
+TRIGGERED = params['TRIGGERED']
+MAX_EFF = params['MAX_EFF']
+
+
 
 
 res_dir = 'results' + RESULTS_SUBDIR
@@ -145,7 +148,7 @@ if TRAIN:
             bw_file.Close()              
 
             root_file_presel_eff.cd()
-            if(cent_bins[0]==0 and useTOF):
+            if(cent_bins[0]==0 and USETOF):
                 df_signal_cent = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35 and -4<TOFnSigmaHe3<4', inplace=False)
             else:
                 df_signal_cent = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and rej>0 and pt>0 and abs(Rapidity)<0.5 and ct < 35', inplace=False)
@@ -165,7 +168,7 @@ if TRAIN:
             for pt_bins in pt_bins_cent:
                 print(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0')
 
-                if(cent_bins[0]==0 and useTOF):
+                if(cent_bins[0]==0 and USETOF):
                     signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0 and -4<TOFnSigmaHe3<4', inplace=False)
                 else:
                     signal_tree_handler_pt = signal_tree_handler.apply_preselections(f'Matter {split_ineq_sign} and ct < 35 and pt > {pt_bins[0]} and pt < {pt_bins[1]} and rej>0', inplace=False)
@@ -263,14 +266,18 @@ if APPLICATION:
                 cent_bins = CENTRALITY_LIST[i_cent_bins]
 
                 bin_results = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-                if cent_bins[0]==0 and useTOF:
+                if cent_bins[0]==0 and USETOF:
                     df_data_cent = df_data.query(f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35 and -4<TOFnSigmaHe3<4')
                 else:
                     df_data_cent = df_data.query(f'Matter {split_ineq_sign} and centrality >= {cent_bins[0]} and centrality < {cent_bins[1]} and pt > {pt_bins[0]} and pt < {pt_bins[1]} and ct < 35')
 
-                if cent_bins[0] == 10 or cent_bins[0] == 50 or KINT7:
+                if KINT7:
                     print('selecting kINT7..')
                     df_data_cent = df_data_cent.query('trigger%2!=0')
+                
+                if TRIGGERED:
+                    print('selecting TRIGGERED events..')
+                    df_data_cent = df_data_cent.query('trigger%2==0')
 
                 model_hdl = ModelHandler()
 

@@ -1,26 +1,21 @@
 ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root"
-DATA_PATH: "/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_18_red.parquet.gzip"
-MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root"
-LS_BACKGROUND_PATH: ""
-RESULTS_SUBDIR: "/bins_offline_2018_AOD"
+DATA_PATH: "/data/fmazzasc/PbPb_2body/2018/DataTable_18qr.parquet.gzip"
+MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/2018/SignalTable_20g7_flat_pt.root"
+LS_BACKGROUND_PATH: "/data/fmazzasc/PbPb_2body/2018/DataTable_18qr_pass3_LS.root"
+RESULTS_SUBDIR: "/bins_offline_2018_TRIGGERED"
 
 
+# CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
+# PT_BINS_CENT: [[[2, 3], [3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3], [3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3], [3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
+# CENTRALITY_LIST:  [[0,5], [5,10], [0, 10],  [10,30], [30, 50], [50,90]]
 CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
-PT_BINS_CENT: [[[3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
-CENTRALITY_LIST:  [[0,5], [5,10], [0, 10],  [10,30], [30, 50], [50,90]]
+PT_BINS_CENT: [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 4], [4, 9]], [[2,9]]]
+CENTRALITY_LIST:  [[0,10],[10,30], [30, 50], [50,90]]
 
-# PT_BINS_CENT: [[[2,9]], [[2,9]], [[2,9]], [[2,9]]]
-
-PT_BINS: [[2, 3],[3,4],[4,5],[5,7], [7,9]]
-CENTRALITY_LIST:  [[0,5], [5,10], [0, 10],  [10,30], [30, 50], [50,90]]
-
-MERGE_SAMPLES: False
-AOD: True
+AOD: False
 KINT7: False
+TRIGGERED: True
 USETOF: False
-TRIGGERED: False
-
-MAX_EFF: 0.99
 
 RANDOM_STATE: 42
 
@@ -53,6 +48,6 @@ TRAINING_COLUMNS:
   - He3ProngPvDCA # totale
   - PiProngPvDCA
   - NpidClustersHe3
-  - TPCnSigmaHe3
+  # - TPCnSigmaHe3
   - TPCnSigmaPi
   # - NitsClustersHe3

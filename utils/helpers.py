@@ -122,10 +122,10 @@ def bw_fit(histo, bw, pwg, fit_range=[2,9]):
     print("BW: ", bw)
     bw_fit = pwg.GetBGBW(params[0], params[1], params[2], params[3], params[4])   
     bw_fit.FixParameter(0,2.991)
-    bw_fit.SetParLimits(1, 0, 5)
+    bw_fit.FixParameter(1, params[1])
     bw_fit.SetParLimits(2, 0, 5)
     bw_fit.SetParLimits(3, 0, 5)
-    bw_fit.SetParLimits(4, 0, 1e9)
+    bw_fit.SetParLimits(4, params[4]/20, params[4])
 
     fit_result = histo.Fit(bw_fit, "SI", "", fit_range[0], fit_range[1])
     cov_matrix = fit_result.GetCovarianceMatrix()
@@ -144,7 +144,7 @@ def he3_bw_fit(histo, bw, pwg, fit_range=[2,9]):
     bw_fit.FixParameter(1, params[1])
     bw_fit.FixParameter(2, params[2])
     bw_fit.FixParameter(3, params[3])
-    bw_fit.SetParLimits(4, params[4]/20, params[4]/9)
+    bw_fit.SetParLimits(4, params[4]/20, params[4])
 
     # bw_fit.SetParLimits(4, 0, 1e3)
 

@@ -16,16 +16,6 @@ dict = pickle.load(open('../results/bins_offline_2018/file_score_eff_dict','rb')
 score = dict['matter_0_5_3_4'][0]
 eff_arr = dict['matter_0_5_3_4'][1]
 
-
-# bw_file = ROOT.TFile.Open('../utils/He3_fits.root')
-# bw = bw_file.Get(f'BlastWave_0_5')
-# df = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
-# print(f'Applying rejection with He3 spectra ...0_5')
-# hp.apply_pt_rejection(df, bw)
-# df.write_df_to_parquet_files()
-# bw_file.Close()
-# bw = -1
-
 df = pd.read_parquet('TreeDataFrame.parquet.gzip')
 
 model_hdl = ModelHandler()

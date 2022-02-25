@@ -37,7 +37,7 @@ def apply_pt_rejection(df, pt_shape):
 #######################################################################
 cent_class = [0, 10]
 
-isAOD = False
+isAOD = True
 is2015 = False
 minimumBias = False
 is_2018_and_2015 = False
@@ -48,7 +48,7 @@ he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
 prongsDCA = np.linspace(1,2, 1)
 
-absorption_corr = 0.95
+absorption_corr = 0.98
 mass_range = [2.96,3.04]
 n_bins = 40
 
@@ -59,20 +59,20 @@ if isAOD:
 
     df_mc = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root")["HyperTree"].arrays(library="pd")
     rename_mc_df_columns(df_mc)
-    df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_18_red.parquet.gzip")
-    an_file = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/AnalysisResults_18.root")
+    df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_15_red.parquet.gzip")
+    an_file = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_2015_2.root")
 
 else:
     if is2015:
-        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
+        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/2015/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
-        df = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
-        an_file = uproot.open('/data/fmazzasc/PbPb_2body/AnalysisResults_15o.root')
+        df = uproot.open("/data/fmazzasc/PbPb_2body/2015/DataTable_15o.root")["DataTable"].arrays(library="pd")
+        an_file = uproot.open('/data/fmazzasc/PbPb_2body/2015/AnalysisResults_15o.root')
     else:
-        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
+        hdl = TreeHandler('/data/fmazzasc/PbPb_2body/2018/SignalTable_20g7_flat_pt.root', 'SignalTable')
         df_mc = hdl.get_data_frame()
-        df = pd.read_parquet('/data/fmazzasc/PbPb_2body/no_pt_cut/DataTable_18qr.parquet.gzip') # df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
-        an_file = uproot.open("/data/fmazzasc/PbPb_2body/no_pt_cut/AnalysisResults_18qr.root")
+        df = pd.read_parquet('/data/fmazzasc/PbPb_2body/2018/DataTable_18qr.parquet.gzip') # df = uproot.open("/data/fmazzasc/PbPb_2body/old_stuff/DataTable_18qr_pass3.root")["DataTable"].arrays(library="pd")
+        an_file = uproot.open("/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root")
 
         if is_2018_and_2015:
             df_2015 = uproot.open("/data/fmazzasc/PbPb_2body/DataTable_15o.root")["DataTable"].arrays(library="pd")
@@ -80,7 +80,7 @@ else:
         
 
 
-cent_counts, cent_edges = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1"][11].to_numpy()
+cent_counts, cent_edges = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1" if not isAOD else 'Hypertriton_summary;1'][11].to_numpy()
 cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
 cent_range_map = np.logical_and(cent_bin_centers > cent_class[0], cent_bin_centers < cent_class[1])
 counts_cent_range = cent_counts[cent_range_map]
@@ -88,7 +88,7 @@ n_ev = np.sum(counts_cent_range)
 
 
 if is2015==False and minimumBias:
-    an_file = uproot.open("/data/fmazzasc/PbPb_2body/no_pt_cut/AnalysisResults_18qr.root")
+    an_file = uproot.open("/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root")
     n_ev = hp.get_number_of_MB_ev(cent_class, an_file)
 
 
@@ -107,7 +107,7 @@ if minimumBias:
 
 
 
-# pt_bins = [[2, 3],[3,4],[4,4.5], [4.5,5], [5,6], [6,9]]
+# pt_bins = [[3, 3.5],[3.5,4],[4,4.5],[4.5,5],[5,6],[6,9]]
 pt_bins = [[2,9]]
 
 bw_index = 0

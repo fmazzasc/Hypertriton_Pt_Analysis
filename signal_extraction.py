@@ -16,8 +16,6 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 0.9
-
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
 ROOT.gROOT.SetBatch()
@@ -86,7 +84,6 @@ for split in SPLIT_LIST:
                 score_eff_arrays_dict[bin].append(0.5*(score_eff_arrays_dict[bin_mat][0] + score_eff_arrays_dict[bin_antimat][0]))
                 score_eff_arrays_dict[bin].append(score_eff_arrays_dict[bin_mat][1])
 
-            
             else:
                 df_data = pd.read_parquet(f'df{RESULTS_SUBDIR}/{bin}')
                 df_signal = pd.read_parquet(f'df{RESULTS_SUBDIR}/mc_{bin}')
@@ -133,7 +130,7 @@ for split in SPLIT_LIST:
 
                 # background
                 roo_n_background = ROOT.RooRealVar('N_{bkg}', 'Nbackground', 0., 1.e4)
-                roo_slope = ROOT.RooRealVar('slope', 'slope', -20., 20.)
+                roo_slope = ROOT.RooRealVar('slope', 'slope', -80., 80.)
                 roo_slope2 = ROOT.RooRealVar('slope2', 'slope2', -20., 20.)
 
 
@@ -286,3 +283,6 @@ for split in SPLIT_LIST:
             h_significance.Write()
 
 root_file_signal_extraction.Close()
+
+
+pickle.dump(score_eff_arrays_dict, open(res_dir + "/file_score_eff_dict", "wb"))

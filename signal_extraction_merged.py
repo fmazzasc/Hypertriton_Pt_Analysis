@@ -16,8 +16,6 @@ import yaml
 from helpers import significance_error, ndarray2roo
 
 SPLIT = True
-MAX_EFF = 0.9
-
 # avoid pandas warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
 ROOT.gROOT.SetBatch()
@@ -38,8 +36,8 @@ PT_BINS_CENT = [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,4],[4,9]], [[2,
 CENTRALITY_LIST = [[0,10],[10,30], [30, 50], [50,90]]
 ##################################################################
 
-res_dir_2015 = 'results/bins_offline_2018_KINT7'
-res_dir_2018 = 'results/bins_offline_2015'
+res_dir_2015 = 'results/bins_offline_2015'
+res_dir_2018 = 'results/bins_offline_2018_KINT7'
 target_dir = 'results/bins_offline_merged'
 
 if not os.path.isdir(target_dir):
@@ -49,7 +47,7 @@ root_file_signal_extraction = ROOT.TFile(target_dir + "/SignalExtraction.root", 
 
 
 # split matter/antimatter
-SPLIT_LIST = ['antimatter', 'matter']
+SPLIT_LIST = ['antimatter', 'matter', 'all']
 bkg_shape = 'pol2'
 
 
@@ -61,13 +59,36 @@ for split in SPLIT_LIST:
         cent_bins = CENTRALITY_LIST[i_cent_bins]
         for pt_bins in pt_bins_cent:
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-    
 
-            df_data_2018 = pd.read_parquet(f'df/bins_offline_2018_KINT7/{bin}')
-            df_data_2015 = pd.read_parquet(f'df/bins_offline_2015/{bin}')
 
-            df_signal = pd.read_parquet(f'df/bins_offline_2018_KINT7/mc_{bin}')
+            if split == 'all':
+                score_eff_arrays_dict_2018[bin] = []
+                score_eff_arrays_dict_2015[bin] = []
+                bin_mat = f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
+                bin_antimat = f'antimatter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
 
+                df_data_mat_2018 = pd.read_parquet(f'df/bins_offline_2018_KINT7/{bin_mat}')
+                df_data_mat_2015 = pd.read_parquet(f'df/bins_offline_2015/{bin_mat}')
+
+                df_data_antimat_2018 = pd.read_parquet(f'df/bins_offline_2018_KINT7/{bin_antimat}')
+                df_data_antimat_2015 = pd.read_parquet(f'df/bins_offline_2015/{bin_antimat}')
+
+                df_data_2018 = pd.concat([df_data_mat_2018, df_data_antimat_2018])
+                df_data_2015 = pd.concat([df_data_mat_2015, df_data_antimat_2015])
+
+                del df_data_antimat_2018, df_data_mat_2018, df_data_antimat_2015, df_data_mat_2015
+                score_eff_arrays_dict_2018[bin].append(0.5*(score_eff_arrays_dict_2018[bin_mat][0] + score_eff_arrays_dict_2018[bin_antimat][0]))
+                score_eff_arrays_dict_2018[bin].append(score_eff_arrays_dict_2018[bin_mat][1])
+                score_eff_arrays_dict_2015[bin].append(0.5*(score_eff_arrays_dict_2015[bin_mat][0] + score_eff_arrays_dict_2015[bin_antimat][0]))
+                score_eff_arrays_dict_2015[bin].append(score_eff_arrays_dict_2015[bin_mat][1])   
+                df_signal = pd.read_parquet(f'df/bins_offline_2018_KINT7/mc_{bin_mat}') #### only for MC fit shape
+
+
+
+            else:
+                df_data_2018 = pd.read_parquet(f'df/bins_offline_2018_KINT7/{bin}')
+                df_data_2015 = pd.read_parquet(f'df/bins_offline_2015/{bin}')
+                df_signal = pd.read_parquet(f'df/bins_offline_2018_KINT7/mc_{bin}') #### only for MC fit shape
 
             # ROOT.Math.MinimizerOptions.SetDefaultTolerance(1e-2)
             root_file_signal_extraction.mkdir(f'{bin}_{bkg_shape}')
@@ -83,7 +104,7 @@ for split in SPLIT_LIST:
                 if eff < 0.20:
                     continue
                 formatted_eff = "{:.2f}".format(eff)
-                print(f'processing {bin}: eff 2018 = {eff_2018:.2f}, eff 2015 = {eff_2015:.2f}, score 2018 = {score_2018:.2f}, , score 2015 = {score_2015:.2f} ...')
+                print(f'processing {bin}: eff: {formatted_eff} , eff 2018 = {eff_2018:.2f}, eff 2015 = {eff_2015:.2f}, score 2018 = {score_2018:.2f}, , score 2015 = {score_2015:.2f} ...')
 
                 df_data_sel = pd.concat([df_data_2018.query(f'model_output > {score_2018}'), df_data_2015.query(f'model_output > {score_2015}')]) 
                 df_signal_sel = df_signal.query(f'model_output > {eff}')

@@ -97,6 +97,8 @@ h_gen_pt = {}
 h_rec_radius = {}
 h_rec_ct = {}
 h_rec_pt = {}
+h_rec_pt_rad = {}
+h_gen_pt_rad = {} 
 
 for key in func.keys():
         for split in split_list:
@@ -107,6 +109,10 @@ for key in func.keys():
             h_gen_ct[f"{split}_" + key] = ROOT.TH1D(f"fGenCt_{split}_" + key, ";#it{c}t (cm);Entries", 50, 1, 35)
             h_rec_radius[f"{split}_" + key] = ROOT.TH1D(f"fRecRadius_{split}_" + key, ";#it{R}_{#it{abs}} (cm);Entries", 1000, 0, 1000)
             h_rec_ct[f"{split}_" + key] = ROOT.TH1D(f"fRecCt_{split}_" + key, ";#it{c}t (cm);Entries", 50, 1, 35)
+            h_rec_pt_rad[f"{split}_" + key] = ROOT.TH2D(f"fRecPtRad_{split}_" + key, "; #it{p}_{T} (GeV/#it{c});#it{R} (cm);Entries", 50, 0, 10, 100, 1, 50)
+            h_gen_pt_rad[f"{split}_" + key] = ROOT.TH2D(f"fGenPtRad_{split}_" + key, "; #it{p}_{T} (GeV/#it{c});#it{R} (cm);Entries", 50, 0, 10, 100, 1, 50)
+
+
 
 ### allocate pt histograms
 for key in h_rec_ct.keys():
@@ -115,13 +121,13 @@ for key in h_rec_ct.keys():
             pt_bins = PT_BINS_CENT[0]
             pt_bins = np.unique(np.array(pt_bins, dtype=float))
     pt_bins = np.unique(np.array(pt_bins, dtype=float))
-    h_rec_pt[key] = ROOT.TH1D(f"fRecPt_" + key, ";#it{p}_{T} (GeV/#it{c});Entries", len(pt_bins) - 1, pt_bins)
-    h_gen_pt[key] = ROOT.TH1D(f"fGenPt_" + key, ";#it{p}_{T} (GeV/#it{c});Entries", len(pt_bins) - 1, pt_bins)
+    h_rec_pt[key] = ROOT.TH1D(f"fRecPt_" + key, ";#it{p}_{T} (GeV/#it{c});Entries", 400, 0, 10)
+    h_gen_pt[key] = ROOT.TH1D(f"fGenPt_" + key, ";#it{p}_{T} (GeV/#it{c});Entries", 400, 0, 10)
 
 # read tree
 data_frame_he3 = ROOT.RDataFrame('STree', mc_file)
 data_frame_he3 = data_frame_he3.Range(0,int(1e7))
-data_frame_he3 = data_frame_he3.Filter('pt > 2. and pt < 10. and (flag & 1)==1')
+data_frame_he3 = data_frame_he3.Filter('pt > 0. and pt < 10. and (flag & 1)==1')
 np_he3 = data_frame_he3.AsNumpy(["pt", "pdg", "absCt", "eta"])
 
 # analysis in centrality classes
@@ -131,7 +137,7 @@ num_entries = len(np_he3["pt"])
 print_steps = num_entries*np.arange(0,1,0.01)
 
 
-for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt']):
+for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt'], np_he3['eta']):
 
     # if counter > 10000:
     #     break
@@ -152,11 +158,11 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt']):
         #     print(absCt)
         #     key_counter += 1
         # rejection sampling to reweight pt
-        if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
-            continue
+        # if ROOT.gRandom.Rndm()*func_max[key] > func[key].Eval(he3[0]):
+        #     continue
         # sample decay ct and ckeck for absorption
 
-        decCt = ROOT.gRandom.Exp(7.6)
+        decCt = ROOT.gRandom.Exp(200)
         # polar angle from eta
         tmp = abs(he3[3])
         tmp = ROOT.TMath.Exp(tmp)
@@ -172,12 +178,15 @@ for he3 in zip(np_he3['pt'], np_he3['pdg'], np_he3['absCt']):
         h_gen_radius[f"{split}_" + key].Fill(dec_radius)
         h_gen_ct[f"{split}_" + key].Fill(decCt)
         h_gen_pt[f"{split}_" + key].Fill(he3[0])
+        h_gen_pt_rad[f"{split}_" + key].Fill(he3[0], dec_radius)
 
         # print('gen: ', he3[0])
         if not (decCt > absCt):  # decCt < absCt
             h_rec_radius[f"{split}_" + key].Fill(dec_radius)
             h_rec_ct[f"{split}_" + key].Fill(decCt)
             h_rec_pt[f"{split}_" + key].Fill(he3[0])
+            h_rec_pt_rad[f"{split}_" + key].Fill(he3[0], dec_radius)
+
             
         if (absCt < -0.5):  # decCt < absCt
             h_rec_radius[f"{split}_" + key].Fill(dec_radius)
@@ -206,6 +215,12 @@ for key in h_rec_ct.keys():
     h_rec_pt[key].GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
     h_rec_pt[key].GetYaxis().SetTitle("1 - #it{f}_{abs}")
     h_rec_pt[key].Write(f"fEffPt_" + key)
+
+    ############### eff pT
+    h_rec_pt_rad[key].Divide(h_gen_pt_rad[key])
+    h_rec_pt_rad[key].GetZaxis().SetTitle("1 - #it{f}_{abs}")
+    h_rec_pt_rad[key].Write(f"fEffPtRad_" + key)
+
 
     h_abs_ct[key].Write(f"fAbsCt_" + key)
     h_abs_radius[key].Write(f"fAbsRadius_" + key)

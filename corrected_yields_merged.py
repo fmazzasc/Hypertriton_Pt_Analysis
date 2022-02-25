@@ -26,8 +26,8 @@ PT_BINS_CENT = [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,4],[4,9]], [[2,
 CENTRALITY_LIST = [[0,10],[10,30], [30, 50], [50,90]]
 ##################################################################
 
-res_dir_2015 = 'results/bins_offline_2018_KINT7'
-res_dir_2018 = 'results/bins_offline_2015'
+res_dir_2015 = 'results/bins_offline_2015'
+res_dir_2018 = 'results/bins_offline_2018_KINT7'
 target_dir = 'results/bins_offline_merged'
 
 if not os.path.isdir(target_dir):
@@ -35,7 +35,7 @@ if not os.path.isdir(target_dir):
 
 
 # split matter/antimatter
-SPLIT_LIST = ['antimatter', 'matter']
+SPLIT_LIST = ['antimatter', 'matter', 'all']
 
 # bw file
 #####################################################################
@@ -87,9 +87,18 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         print("---------------------------")
         print(f'{i_split} -> {split}')
         # get preselection efficiency
-        presel_eff_counts_2015, presel_eff_edges = presel_eff_file_2015[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-        presel_eff_counts_2018, _ = presel_eff_file_2018[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
-        presel_eff_counts = 0.5*(presel_eff_counts_2015 + presel_eff_counts_2018)
+        if split=='all':
+            presel_eff_counts_2015_matter, presel_eff_edges = presel_eff_file_2015[f'fPreselEff_vs_pt_matter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_2018_matter, _ = presel_eff_file_2018[f'fPreselEff_vs_pt_matter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_matter = 0.5*(presel_eff_counts_2015_matter + presel_eff_counts_2018_matter)
+            presel_eff_counts_2015_antimatter, presel_eff_edges = presel_eff_file_2015[f'fPreselEff_vs_pt_antimatter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_2018_antimatter, _ = presel_eff_file_2018[f'fPreselEff_vs_pt_antimatter_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_antimatter = 0.5*(presel_eff_counts_2015_antimatter + presel_eff_counts_2018_antimatter)
+            presel_eff_counts = 0.5*(presel_eff_counts_matter + presel_eff_counts_antimatter)
+        else:
+            presel_eff_counts_2015, presel_eff_edges = presel_eff_file_2015[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts_2018, _ = presel_eff_file_2018[f'fPreselEff_vs_pt_{split}_{cent_bins[0]}_{cent_bins[1]};1'].to_numpy()
+            presel_eff_counts = 0.5*(presel_eff_counts_2015 + presel_eff_counts_2018)
 
         # get absorption correction
         func = "BlastWave" if cent_bins==[0,10] else "BGBW"
@@ -102,7 +111,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
         for pt_bins in pt_bins_cent:
     
             bin = f'{split}_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'
-            formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin])
+            formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin if split!='all' else f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}'])
 
             bkg_shape = 'pol2'
             eff_cut_increment = 0
@@ -114,7 +123,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
                 if eff_cut_sign == -1:
                     eff_cut_increment += 0.01
                 eff_cut_sign *= -1
-                formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin]+eff_cut_increment*eff_cut_sign)
+                formatted_eff_cut = "{:.2f}".format(eff_cut_dict[bin if split!='all' else f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}']+eff_cut_increment*eff_cut_sign)
 
             # get signal
             h_raw_yield = signal_extraction_file.Get(f'{bin}_{bkg_shape}/fRawYields;1')
@@ -143,7 +152,7 @@ for i_cent_bins, pt_bins_cent in enumerate(PT_BINS_CENT):
             absorption_corr = absorption_corr if split=='antimatter' else (0.98/0.95)*absorption_corr
             # absorption_corr = 1
             bdt_eff = float(formatted_eff_cut)
-            eff = presel_eff * eff_cut_dict[bin]
+            eff = presel_eff * eff_cut_dict[bin if split!='all' else f'matter_{cent_bins[0]}_{cent_bins[1]}_{pt_bins[0]}_{pt_bins[1]}']
 
             pt_bin_index = h_corrected_yields[i_split].FindBin(pt_bins[0]+0.2)
             h_corrected_yields[i_split].SetBinContent(pt_bin_index, raw_yield/eff[0]/absorption_corr)

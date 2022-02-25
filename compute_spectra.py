@@ -20,26 +20,19 @@ systs = ROOT.TH1D('systs', 'systs', 3, 0, 2 )
 
 pwg = AliPWGFunc()
 bw_file = ROOT.TFile('utils/He3_fits.root')
-corrected_yields_file = ROOT.TFile.Open('results/bins_offline_2018_TOF' + '/corrected_yields.root')
-
-
-
-
 hyp_lambda_ratio = {}
 histos = []
 integrals = []
 
 #### 0-10
-histo_matter = corrected_yields_file.Get('matter_0_10/fYields_matter_0_10')
-histo_matter.SetDirectory(0)
-histo_antimatter = corrected_yields_file.Get('antimatter_0_10/fYields_antimatter_0_10')
-histo_antimatter.SetDirectory(0)
-bw = bw_file.Get('BlastWave_5_10')
-histo, integral, integral_error, bw_fit = hp.he3_bw_fit(histo_matter, bw, pwg, fit_range=[3,9])
-histo_anti, integral_anti, integral_error_anti, bw_fit = hp.he3_bw_fit(histo_antimatter, bw, pwg, fit_range=[3,9])
-print(integral, integral_error, integral_anti, integral_error_anti)
+corrected_yields_file = ROOT.TFile.Open('results/bins_offline_2018' + '/corrected_yields.root')
+histo_all = corrected_yields_file.Get('all_0_10/fYields_all_0_10')
+histo_all.SetDirectory(0)
+bw = bw_file.Get('BlastWave_0_5')
+histo, integral, integral_error, bw_fit = hp.bw_fit(histo_all, bw, pwg, fit_range=[2,9])
+print(integral/2, integral_error/2)
 
-hyp_lambda_ratio['010'] = [integral/19.575, integral_error/19.575]
+hyp_lambda_ratio['010'] = [integral/19.575/2, integral_error/19.575/2]
 histos.append(histo)
 yields.SetBinContent(1, integral)
 stats.SetBinContent(1, integral_error)
@@ -50,14 +43,11 @@ systs.SetBinContent(1, integral_error)
 
 #### 10-30
 corrected_yields_file = ROOT.TFile.Open('results/bins_offline_merged' + '/corrected_yields.root')
-histo_matter = corrected_yields_file.Get('matter_10_30/fYields_matter_10_30')
-histo_matter.SetDirectory(0)
-histo_antimatter = corrected_yields_file.Get('antimatter_10_30/fYields_antimatter_10_30')
-histo_antimatter.SetDirectory(0)
+histo_all = corrected_yields_file.Get('all_10_30/fYields_all_10_30')
+histo_all.SetDirectory(0)
 bw = bw_file.Get('BlastWave_10_30')
-histo, integral, integral_error, bw_fit = hp.he3_bw_fit(histo_matter, bw, pwg, fit_range=[2,9])
-histo_anti, integral_anti, integral_error_anti, bw_fit = hp.he3_bw_fit(histo_antimatter, bw, pwg, fit_range=[2,9])
-hyp_lambda_ratio['1030'] = [integral/12, integral_error/12]
+histo, integral, integral_error, bw_fit = hp.bw_fit(histo_all, bw, pwg, fit_range=[2,9])
+hyp_lambda_ratio['1030'] = [integral/12/2, integral_error/12/2]
 
 histos.append(histo)
 yields.SetBinContent(2, integral)
@@ -68,14 +58,11 @@ systs.SetBinContent(2, integral_error)
 
 #### 30-50
 corrected_yields_file = ROOT.TFile.Open('results/bins_offline_2018' + '/corrected_yields.root')
-histo_matter = corrected_yields_file.Get('matter_30_50/fYields_matter_30_50')
-histo_matter.SetDirectory(0)
-histo_antimatter = corrected_yields_file.Get('antimatter_30_50/fYields_antimatter_30_50')
-histo_antimatter.SetDirectory(0)
+histo_all = corrected_yields_file.Get('all_30_50/fYields_all_30_50')
+histo_all.SetDirectory(0)
 bw = bw_file.Get('BlastWave_30_50')
-histo, integral, integral_error, bw_fit = hp.he3_bw_fit(histo_matter, bw, pwg, fit_range=[2,9])
-histo_anti, integral_anti, integral_error_anti, bw_fit = hp.he3_bw_fit(histo_antimatter, bw, pwg, fit_range=[2,9])
-hyp_lambda_ratio['3050'] = [integral/5.3, integral_error/5.3]
+histo, integral, integral_error, bw_fit = hp.bw_fit(histo_all, bw, pwg, fit_range=[2,9])
+hyp_lambda_ratio['3050'] = [integral/5.3/2, integral_error/5.3/2]
 
 histos.append(histo)
 yields.SetBinContent(3, integral)
@@ -104,16 +91,16 @@ outfile.Close()
 # d$N$/d$\eta$ obtained by simple weighted average of the values published in https://arxiv.org/pdf/1910.14401.pdf
 
 
-kBlueC  = ROOT.TColor.GetColor("#2077b4");
-kRedC  = ROOT.TColor.GetColor("#d62827");
-kGreenC  = ROOT.TColor.GetColor("#2ba02b");
-kOrangeC  = ROOT.TColor.GetColor("#ff7f0f");
-kVioletC  = ROOT.TColor.GetColor("#9467bd");
-kPinkC  = ROOT.TColor.GetColor("#e377c1");
-kGreyC  = ROOT.TColor.GetColor("#7f7f7f");
-kBrownC  = ROOT.TColor.GetColor("#8c564c");
-kAzureC  = ROOT.TColor.GetColor("#18becf");
-kGreenBC  = ROOT.TColor.GetColor("#bcbd21");
+kBlueC  = ROOT.TColor.GetColor("#2077b4")
+kRedC  = ROOT.TColor.GetColor("#d62827")
+kGreenC  = ROOT.TColor.GetColor("#2ba02b")
+kOrangeC  = ROOT.TColor.GetColor("#ff7f0f")
+kVioletC  = ROOT.TColor.GetColor("#9467bd")
+kPinkC  = ROOT.TColor.GetColor("#e377c1")
+kGreyC  = ROOT.TColor.GetColor("#7f7f7f")
+kBrownC  = ROOT.TColor.GetColor("#8c564c")
+kAzureC  = ROOT.TColor.GetColor("#18becf")
+kGreenBC  = ROOT.TColor.GetColor("#bcbd21")
 
 hp_ratio_csm_3 = ROOT.TGraphErrors("utils/ProdModels/csm_models/VanillaCSM.S3.Vc.eq.3dVdy.dat","%*s %*s %*s %lg %*s %*s %*s %*s %lg %*s")
 hp_ratio_csm_1 = ROOT.TGraphErrors("utils/ProdModels/csm_models/VanillaCSM.S3.Vc.eq.dVdy.dat","%*s %*s %*s %lg %*s %*s %*s %*s %lg %*s")
@@ -242,8 +229,8 @@ pp_syst.SetLineWidth(1)
 
 
 
-x = np.array([1447], dtype=np.float64)
-ex = np.array([39], dtype=np.float64)
+x = np.array([1765.0], dtype=np.float64)
+ex = np.array([50], dtype=np.float64)
 y = np.array([4*hyp_lambda_ratio['010'][0]], dtype=np.float64)
 ey = np.array([4*hyp_lambda_ratio['010'][1]], dtype=np.float64)
 eys = np.array([4*hyp_lambda_ratio['010'][1]], dtype=np.float64)
