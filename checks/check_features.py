@@ -11,11 +11,15 @@ import hipe4ml.plot_utils as pu
 import matplotlib.pyplot as plt
 
 training_columns = ['V0CosPA', 'ct', 'ProngsDCA','PiProngPvDCAXY', 'He3ProngPvDCAXY', 'He3ProngPvDCA', 'PiProngPvDCA', 'NpidClustersHe3', 'TPCnSigmaHe3','TPCnSigmaPi']
-df = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_20g7_flat_pt.root', 'SignalTable')
-df_old = TreeHandler('/data/fmazzasc/PbPb_2body/SignalTable_16h7abc_flat_pt.root', 'SignalTable')
+df_sig = TreeHandler('/data/fmazzasc/PbPb_2body/KF/AnalysisResults_MC.root', 'HyperTree', columns_names=training_columns)
+print('Signal loaded')
+df_dat = TreeHandler('/data/fmazzasc/PbPb_2body/KF/AnalysisResults.root', 'HyperTree', columns_names=training_columns)
+print('Data loaded')
+
+df_sig.apply_preselections('V0CosPA>0.99 and ct<50 and NpidClustersHe3>100')
+df_dat.apply_preselections('V0CosPA>0.99 and ct<50 and NpidClustersHe3>100')
 
 
-pu.plot_distr([df.apply_preselections('centrality < 5', inplace=False), df.apply_preselections('centrality > 50', inplace=False)], column=training_columns,labels=["cent < 5", "cent > 50"], log=True, density=True, figsize=(20, 20), alpha=0.3, grid=False)
-plt.savefig('check_centrality.png')
-pu.plot_distr([df, df_old], column=training_columns,labels=["20g7", "16h7abc"], log=True, density=True, figsize=(20, 20), alpha=0.3, grid=False)
+
+pu.plot_distr([df_sig, df_dat], column=training_columns,labels=["Signal", "Data"], log=True, density=True, figsize=(20, 20), alpha=0.3, grid=False)
 plt.savefig('mc_comp.png')

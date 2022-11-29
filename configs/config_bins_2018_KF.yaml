@@ -1,29 +1,32 @@
 ANALYSIS_RESULTS_PATH: "/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root"
-DATA_PATH: "/data/fmazzasc/PbPb_2body/2018/DataTable_18qr_tof.parquet.gzip"
-MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/2018/mc/SignalTable_20g7.root"
-LS_BACKGROUND_PATH: "/data/fmazzasc/PbPb_2body/2018/DataTable_18qr_pass3_LS.root"
-RESULTS_SUBDIR: "/bins_offline_2018"
+DATA_PATH: "/data/fmazzasc/PbPb_2body/KF/AnalysisResults.root"
+MC_SIGNAL_PATH: "/data/fmazzasc/PbPb_2body/KF/AnalysisResults_MC.root"
+LS_BACKGROUND_PATH: ""
+RESULTS_SUBDIR: "/bins_offline_2018_KF"
 
 
-CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
-PT_BINS_CENT: [[[3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[3,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
-CENTRALITY_LIST:  [[0,5], [5,10], [0, 10],  [10,30], [30, 50], [50,90]]
-# CT_BINS: [[2, 4], [4, 8], [8, 14], [14, 35], [4, 6], [1, 2], [6, 8], [8, 10], [10, 14], [4, 7], [7, 14]] # training
-# PT_BINS_CENT: [[[2, 4],[4, 9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
-# CENTRALITY_LIST:  [[0,10],[10,30], [30, 50], [50,90]]
+PT_BINS_CENT: [[[3,3.5], [3.5,4], [4, 4.5],[4.5,5],[5,6], [6,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2, 3],[3,4],[4,5],[5,9]], [[2,9]]]
+CENTRALITY_LIST:  [[0, 10],  [10,30], [30, 50], [50,90]]
+
+# PT_BINS_CENT: [[[2,9]], [[2,9]], [[2,9]], [[2,9]]]
+
+PT_BINS: [[2, 3],[3,4],[4,5],[5,7], [7,9]]
+CENTRALITY_LIST:  [[0, 10],  [10,30], [30, 50], [50,90]]
 
 MERGE_SAMPLES: False
-AOD: False
+AOD: True
 KINT7: False
 USETOF: False
 TRIGGERED: False
-MAX_EFF: 0.94
+
+MAX_EFF: 0.99
+
 RANDOM_STATE: 42
 
 HYPERPARAMS:
-  max_depth: 3
+  max_depth: 13
   learning_rate: 0.0982
-  n_estimators: 400
+  n_estimators: 181
   gamma: 0.4467
   min_child_weight: 5.75
   subsample: 0.74

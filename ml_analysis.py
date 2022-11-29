@@ -38,7 +38,6 @@ parser = argparse.ArgumentParser(prog='ml_analysis', allow_abbrev=True)
 parser.add_argument('-split', action='store_true')
 parser.add_argument('-train', action='store_true')
 parser.add_argument('-application', action='store_true')
-parser.add_argument('-aod', action='store_true')
 parser.add_argument('config', help='Path to the YAML configuration file')
 args = parser.parse_args()
 
@@ -74,7 +73,6 @@ AOD = params['AOD']
 
 MC_PATH = params['MC_SIGNAL_PATH']
 BKG_PATH = params['LS_BACKGROUND_PATH']
-CT_BINS = params['CT_BINS']
 PT_BINS_CENT = params['PT_BINS_CENT']
 CENTRALITY_LIST = params['CENTRALITY_LIST']
 TRAINING_COLUMNS_LIST = params['TRAINING_COLUMNS']
@@ -112,7 +110,7 @@ if TRAIN:
         signal_tree_handler = TreeHandler(MC_PATH, "SignalTable")
 
     if BKG_PATH=='':
-        background_tree_handler = TreeHandler(DATA_PATH) if DATA_PATH[-1]!='t' else TreeHandler(DATA_PATH, 'DataTable')
+        background_tree_handler = TreeHandler(DATA_PATH) if DATA_PATH[-1]!='t' else TreeHandler(DATA_PATH, 'DataTable' if not AOD else "HyperTree")
         background_tree_handler.apply_preselections("m>3.91 or m<2.975")
     else:
         background_tree_handler = TreeHandler(BKG_PATH, "DataTable")
@@ -250,10 +248,8 @@ if APPLICATION:
         open(res_dir + "/file_score_eff_dict", "rb"))
 
     for split in SPLIT_LIST:
-        if DATA_PATH[-1]!='t':
-            df_data = pd.read_parquet(DATA_PATH)
-        else:            
-            df_data = uproot.open(os.path.expandvars(DATA_PATH))['DataTable'].arrays(library="pd")
+        df_data = TreeHandler(DATA_PATH) if DATA_PATH[-1]!='t' else TreeHandler(DATA_PATH, 'DataTable' if not AOD else "HyperTree")
+        df_data = df_data.get_data_frame()
 
         split_ineq_sign = '> -0.1'
         if SPLIT:

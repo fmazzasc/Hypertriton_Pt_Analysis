@@ -6,14 +6,24 @@ def fill_2D_hist(hist, arr1, arr2):
     for x, y in zip(arr1, arr2):
         hist.Fill(x, y)
 
+def rename_mc_df_columns(df):
+    rename_dict = {}
+    rename_dict['ptMC'] = 'gPt'
+    rename_dict['etaMC'] = 'gEta'
+    rename_dict['ctMC'] = 'gCt'
+    rename_dict['yMC'] = 'gRapidity'
+    df.rename(columns = rename_dict, inplace=True)
 
-df = uproot.open('/data/fmazzasc/PbPb_2body/SignalTable_20g7_no_cuts.root')[
-    'SignalTable'].arrays(library='pd').query('pt>0')
+
+df = uproot.open('/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root')[
+    'HyperTree'].arrays(library='pd').query('isReconstructed==1')
+
+rename_mc_df_columns(df)
 
 hist_pt = ROOT.TH2D("res pt", "; pT gen; (pT rec - pT gen)/pT_gen",
                     100, 1, 10, 100, -0.2, 0.2)
 
-hist_ct = ROOT.TH2D("res ct", "; ct gen; (ct rec - ct gen)/ct_gen", 100, 1, 35, 100, -0.15, 0.15)
+hist_ct = ROOT.TH2D("res ct", "; ct gen; (ct gen - ct rec)/ct_gen", 100, 1, 35, 300, -0.6, 0.6)
 
 hist_rapidity = ROOT.TH2D(
     "res rap", "; rap gen; (rap rec - rap gen)", 100, -1, 1, 100, -0.01, 0.01)

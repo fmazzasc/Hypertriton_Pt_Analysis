@@ -37,16 +37,17 @@ def apply_pt_rejection(df, pt_shape):
 #######################################################################
 cent_class = [0, 10]
 
-isAOD = True
+isAOD = False
+isKF = True
 is2015 = False
 minimumBias = False
 is_2018_and_2015 = False
 
-cosPAcuts = np.linspace(0.9999, 0.99995, 1)
-pidHe3cuts = np.linspace(110, 101, 1)
+cosPAcuts = np.linspace(0.999, 1., 1)
+pidHe3cuts = np.linspace(100, 170, 1)
 he3PtCuts = np.linspace(1.7, 1.9, 1)
 piPtCuts = np.linspace(0.15, 0.18, 1)
-prongsDCA = np.linspace(1,2, 1)
+prongsDCA = np.linspace(0.7,2, 1)
 
 absorption_corr = 0.98
 mass_range = [2.96,3.04]
@@ -59,8 +60,16 @@ if isAOD:
 
     df_mc = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_MC.root")["HyperTree"].arrays(library="pd")
     rename_mc_df_columns(df_mc)
-    df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_15_red.parquet.gzip")
-    an_file = uproot.open("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_2015_2.root")
+    df = pd.read_parquet("/data/fmazzasc/PbPb_2body/AOD/HyperTritonTree_18_red.parquet.gzip")
+    an_file = uproot.open("/data/fmazzasc/PbPb_2body/2018/AnalysisResults_18qr.root")
+
+if isKF:
+    df_mc = uproot.open("/data/fmazzasc/PbPb_2body/KF/AnalysisResults_MC.root")["HyperTree"].arrays(library="pd")
+    rename_mc_df_columns(df_mc)
+    df = uproot.open("/data/fmazzasc/PbPb_2body/KF/AnalysisResults.root")["HyperTree"].arrays(library="pd")
+    an_file = uproot.open("/data/fmazzasc/PbPb_2body/KF/AnalysisResults.root")
+
+
 
 else:
     if is2015:
@@ -80,7 +89,7 @@ else:
         
 
 
-cent_counts, cent_edges = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1" if not isAOD else 'Hypertriton_summary;1'][11].to_numpy()
+cent_counts, cent_edges = an_file["AliAnalysisTaskHyperTriton2He3piML_custom_summary;1" if not isKF else 'HyperTask_summary'][11].to_numpy()
 cent_bin_centers = (cent_edges[:-1]+cent_edges[1:])/2
 cent_range_map = np.logical_and(cent_bin_centers > cent_class[0], cent_bin_centers < cent_class[1])
 counts_cent_range = cent_counts[cent_range_map]
@@ -107,8 +116,8 @@ if minimumBias:
 
 
 
-# pt_bins = [[3, 3.5],[3.5,4],[4,4.5],[4.5,5],[5,6],[6,9]]
-pt_bins = [[2,9]]
+pt_bins = [[3,4],[4,4.5],[4.5,5],[5,6],[6,9]]
+# pt_bins = [[2,9]]
 
 bw_index = 0
 if cent_class[0]==10 and len(pt_bins)==1:
@@ -144,14 +153,14 @@ directory = "bins" if len(pt_bins)>1 else "single_bin"
 ffile = ROOT.TFile(f"results/{directory}/{AOD_string}_{year_string}_{cent_class[0]}_{cent_class[1]}{MB_string}.root", "recreate")
 
 
-if isAOD:
-    df_rec = df_mc.query('rej>0 and isReconstructed==True and abs(Rapidity)<0.5')
+if isAOD or isKF:
+    df_rec = df_mc.query('rej>0 and isReconstructed==True')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
   
 else:
-    # df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5 and Matter==0')
-    # df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5 and gMatter==0')
-    df_rec = df_mc.query('rej>0 and pt>0 and abs(Rapidity)<0.5')
+    df_rec = df_mc.query('rej>0 and pt>0 and Matter==0')
+    df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5 and gMatter==0')
+    df_rec = df_mc.query('rej>0 and pt>0')
     df_gen = df_mc.query('rej>0 and abs(gRapidity)<0.5')
 
 
@@ -175,7 +184,7 @@ for ind,pt_bin in enumerate(pt_bins):
                         #     cosPA = 0.9998
                         #     pidHe3 = 110
                         print('********************************************************************')
-                        cut = f'2<ct<35 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and He3ProngPvDCA > 0.05 and PiProngPvDCA > 0.2 and abs(TPCnSigmaHe3) < 3.5 and ProngsDCA < {pDCA}'
+                        cut = f'He3ProngPvDCAXY > 0.05 and PiProngPvDCAXY>0.05 and V0CosPA > {cosPA} and NpidClustersHe3 > {pidHe3} and pt > {pt_bin[0]} and pt < {pt_bin[1]} and fChi2<4 and ProngsDCA < {pDCA} and abs(TPCnSigmaHe3)<3'
                         cut_cent = cut + f" and {cent_class[0]}<=centrality<{cent_class[1]}"
                         print("#################################")
                         print("CUT: ", cut_cent)
